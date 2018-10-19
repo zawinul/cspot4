@@ -7,7 +7,7 @@ var main = (function () {
 	}
 
 	$(function () {
-		popup.alert('CSPOT4\nv1.1')
+		popup.alert('CSPOT4\nv1.2')
 			//.then(spotlib.init)
 			//.then(startNoSleep)
 			.then(() => msg('READY to start'))

@@ -4,14 +4,14 @@ var db = (function () {
 	var db;
 	var version = 23;
 
-	function afterReady(f) {
-		return function() {
-			var t = this;
-			var a = arguments;
-			const f2 = () => f.apply(t,a);
-			return dbReady.then(f2);
-		}
-	}
+	// function afterReady(f) {
+	// 	return function() {
+	// 		var t = this;
+	// 		var a = arguments;
+	// 		const f2 = () => f.apply(t,a);
+	// 		return dbReady.then(f2);
+	// 	}
+	// }
 
 	function init() {
 		window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
@@ -224,7 +224,8 @@ var db = (function () {
 	}
 
 	function getPlaylists() {
-		return Rx.Observable.create(observer => {
+
+		var observable = Rx.Observable.create(observer => {
 			console.log({theObserver:observer});
 			var transaction = db.transaction(["playlists"], "readonly");
 			transaction.onerror = gestioneErrori;
@@ -240,6 +241,9 @@ var db = (function () {
 				} 
 			};
 		});
+		return observable			
+			.toArray()
+			.toPromise();
 	}
 
 	function getPlaylist(id) {
@@ -263,7 +267,7 @@ var db = (function () {
 		var transaction = db.transaction(["tracks"], "readwrite");
 		transaction.oncomplete = function (event) {
 			console.log("setTrack done!");
-			ret.resolve();
+			ret.resolve(track);
 		};
 
 		transaction.onerror = gestioneErrori;
@@ -376,7 +380,7 @@ var db = (function () {
 	}
 
 	function getTrack(id) {
-		console.log('GET __TRACK');
+		console.log('GET __TRACK '+id);
 		var ret = $.Deferred();
 		ret.readme='get-track';
 		var transaction = db.transaction(["tracks"], "readonly");
@@ -390,8 +394,10 @@ var db = (function () {
 			console.log('GET __TRACK: esito '+!!req.result);
 			if (req.result) 
 				ret.resolve(req.result);
-			else
+			else {
 				ret.resolve(null);
+				msg("not found in DB").css({color:'red'});
+			}
 		}
 		req.onerror = function(event) {
 			console.log('GET __TRACK red.error');
@@ -413,16 +419,17 @@ var db = (function () {
 	init();
 
 	return {
-		setPlaylist: afterReady(setPlaylist),
-		setPlaylists: afterReady(setPlaylists),
-		getPlaylist: afterReady(getPlaylist),
+		setPlaylist: setPlaylist,
+		setPlaylists: setPlaylists,
+		getPlaylist: getPlaylist,
 		getPlaylists: getPlaylists,
-		setTrack: afterReady(setTrack),
-		setTracks: afterReady(setTracks),
-		getTrack: afterReady(getTrack),
-		getTrackIds: afterReady(getTrackIds),
-		getTrackPlaylists:afterReady(getTrackPlaylists),
-		updatePlaylist:afterReady(updatePlaylist),
-		getCounters:afterReady(getCounters)
+		setTrack: setTrack,
+		setTracks: setTracks,
+		getTrack: getTrack,
+		getTrackIds: getTrackIds,
+		getTrackPlaylists:getTrackPlaylists,
+		updatePlaylist:updatePlaylist,
+		getCounters:getCounters,
+		isReady: dbReady
 	};
 })();

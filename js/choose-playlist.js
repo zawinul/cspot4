@@ -1,48 +1,13 @@
-function reloadDBTracks2(selectedPlaylists) {
-	msg("RELOAD DB TRACKS");
-	var ret = $.Deferred();
-	var m = msg('set playlists');
-	var mdone = 0;
-
-	function get(pl) {
-		changedPLaylists.then(cp=>{
-			var changed = cp.filter(cplist=>cplist.id==pl.id).length>0;
-			msg('ch:'+changed + ' ' + pl.name);
-			var x = (changed) ? db.updatePlaylist(pl) : $.Deferred().resolve(1);
-			x.done(()=>$('#'+pl.idbottone).hide());
-			return x;
-		});
-	}
-
-	selectedPlaylists
-		.map(x=>x.name)
-		.toArray()
-		.toPromise()
-		.then(x=>console.log('sel:'+x.join(', ')));
-
-	selectedPlaylists
-		.flatMap(get)
-		.subscribe(
-		() => {
-			mdone++;
-			m.text('set playlists ' + mdone);
-			m.delay();
-		},
-		() => { },
-		() => {
-			msg('RELOADED!');
-			ret.resolve();
-		});
-	return ret;
-}
-
+// .
 function choosePlaylists(playListsArray) {
-	var ret = new Rx.ReplaySubject();
-	var div = $('<div/>').appendTo('body').load('select-playlists.html', onHtmlLoaded);
+	var ret = $.Deferred();
+	ret.then(function(arr){
+		var data = arr.map(pl=>pl.name);
+		localStorage.cspot2playlists = JSON.stringify(data);
+	})
 
-	ret.map(y => y.name).toArray().map(JSON.stringify).subscribe(x => {
-		localStorage.cspot2playlists = x;
-	});
+	var div = $('<div/>').appendTo('body').load('select-playlists.html', onHtmlLoaded);
+	
 	
 	function onHtmlLoaded() {
 		var template = $('.template', div).removeClass('template');
@@ -64,18 +29,16 @@ function choosePlaylists(playListsArray) {
 			pl.idbottone = id;
 			d.toggleClass('selected', x.length == 0 || x.indexOf(pl.name) >= 0);
 		});
-
 	}
 
 	function onRefreshClick() {
 		$('.okbutton,.refreshbutton', '.select-playlist-div').remove();
-
-		var s = Rx.Observable.from($('.selected', div)).map(x => $(x).data('pl'));
-		reloadDBTracks2(s).done(function(){
-			var s = Rx.Observable.from($('.selected', div)).map(x => $(x).data('pl'));
-			s.subscribe(ret);
-			div.remove();
-		});
+		var arr = [];
+		$('.selected', div).each(function(){
+			arr.push($(this).data('pl'));
+		})
+		ret.resolve(arr);
+		div.remove();
 	}
 
 	// function onOkClick() {
@@ -85,5 +48,5 @@ function choosePlaylists(playListsArray) {
 
 	// 	div.remove();
 	// };
-	return ret.toArray().toPromise();
+	return ret;
 }

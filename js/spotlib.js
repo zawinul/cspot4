@@ -283,18 +283,37 @@ var spotlib = {
 		return getDeviceId.v;
 	}
 		
-	function playUri(uri, device_id) {
+	function playNext() {
+		var opt = {
+			url:"https://api.spotify.com/v1/me/player/next",
+			method:'POST'
+		};
+		return spotlib.sendReq(opt);	
+	}
+
+	function playPrevious() {
+		var opt = {
+			url:"https://api.spotify.com/v1/me/player/previous",
+			method:'POST'
+		};
+		return spotlib.sendReq(opt);	
+	}
+
+	function playUri(uri, device_id, position_ms) {
 		console.log({playUri:{uri:uri, device_id:device_id}});
 
 		if (!$.isArray(uri))
-			return playUri([uri], device_id);
-		
-		var opt = {
+			return playUri([uri], device_id, position_ms);
+		var data = { uris:uri };
+		if (position_ms)
+			data.position_ms = position_ms;
+	
+			var opt = {
 			url:(device_id)
 				? 'https://api.spotify.com/v1/me/player/play?device_id='+device_id
 				: 'https://api.spotify.com/v1/me/player/play',
 			method:'PUT',
-			data: JSON.stringify({ uris:uri })
+			data: JSON.stringify(data)
 		};
 		return spotlib.sendReq(opt);	
 	}
@@ -370,14 +389,18 @@ var spotlib = {
 		var ret = $.Deferred();
 		console.log('get from db '+id);
 		db.getTrack(id).then(tr=> {
-			if (tr!=null)
-				return ret.resolve(tr);
-
+			if (tr!=null) {
+				ret.resolve(tr);
+				return;
+			}
 			var req = {
 				method: 'GET',
 				url:'https://api.spotify.com/v1/tracks/'+id
 			};
-			return sendReq(req).then(db.setTrack);
+			sendReq(req).then(tr=>{
+				ret.resolve(tr);
+				console.log("ottenuta traccia "+id);
+			});
 		});
 		return ret;
 	}
@@ -582,6 +605,8 @@ var spotlib = {
 		getTrackById:getTrackById,
 		getTracksById:getTracksById,
 		playUri:playUri,
+		playNext: playNext,
+		playPrevious: playPrevious,
 		pause:pause,
 		resume:resume,
 		seek:seek,

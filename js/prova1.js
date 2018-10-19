@@ -3,43 +3,30 @@ var me;
 var commands;
 var div;
 var statusTimer = new Rx.ReplaySubject(1);
-var changedPlaylists;
+//var changedPlaylists;
 var blacklistMap;
 var resetNeeded = false;
-
-function show(x, label) {
-	if (!label) 
-		label = "---";
-	if (typeof(x)!='object' || !x.then)
-		console.log({_a_label:label, _b_type:typeof(x), _c_data:x});
-	else
-		x.then((v)=>{
-			var x = {_a_label:label, _b_type:'PROMISE', _c_data:v};
-			if ($.isArray(v))
-				x._b_len = v.length; 
-			console.log(x);
-		});
-}
-
-
+var silenceTrack;
+var _tracks = null, _cursor = -1;
+var timerPeriod = 5000;
+var curTrack; 
 
 function prova1() {
 
-	var _tracks = null, _cursor = 0;
-	var loader = true;
-	var timer = false, timerPeriod = 5000;
 	var statusTimer = new Rx.ReplaySubject(1);
 	var playingSongSubject = new Rx.ReplaySubject(1 /* buffer size */);
 	var playingStateSubject = new Rx.ReplaySubject(1 /* buffer size */);
 	resetNeeded = location.href.indexOf('reset')>=0;
+	var playingMyList = false;
 
 	function initialize() {
 		$('.app').fadeOut(1);
 
-		playingSongSubject.subscribe(showSong);
+		playingSongSubject.subscribe(updateSong);
 		playingSongSubject.subscribe(x => msg(x.name).css({backgroundColor:'white'}));
 
-		spotlib.init()
+		db.isReady
+			.then(spotlib.init)
 			//.then(startNoSleep)
 			.then(initializeDevice)
 			.then(d => {msg('D=' + d.name);})
@@ -50,20 +37,38 @@ function prova1() {
 			.then(initializeLists)
 			.then(initializePage)
 			.then(timerFun)
+			.then(getSilenceTrack)
 			.then(() => {
 				msg('initialize done');
-				//nextSong();
 				prova1Initialized.resolve();
 			});
 
 	}
 
+	function updateSong(song) {
+		if (song.id == updateSong.last)
+			return;
+		updateSong.last = song.id;
+		if (playingMyList) {
+			var found = false;
+			msg('search '+song.id);
+			for(var i=0; i<_tracks.length; i++) {
+				let x = _tracks[i];
+				if (x==song.id) {
+					_cursor = i;
+					msg('synch '+i);
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				msg('synch not found');
+		}
+		showSong(song);
+	}
 
 	function showSong(song) {
-		//msg('SID: '+song.id);
-		if (song.id == showSong.last)
-			return;
-		showSong.last = song.id;
+
 		$(".titolo", div).text(song.name);
 		$(".artist", div).text(song.artists[0].name);
 		$(".album", div).text("from: " + song.album.name);
@@ -81,23 +86,27 @@ function prova1() {
 		});
 	}
 	
-	function silenceTracks() {
-		if (!silenceTracks.id1) {
-			silenceTracks.id1 = '6ZfRjAcExubAvJFOkZfGtI';
-			silenceTracks.id2 = '2EeLn1LGhXQO9uFERlb2gE';
-			silenceTracks.p = Promise.all([silenceTracks.id1, silenceTracks.id2].map(spotlib.getTrackById));
-		}
-		return silenceTracks.p;
+	function getSilenceTrack() {
+		//var id = '6ZfRjAcExubAvJFOkZfGtI';
+		var id = '2EeLn1LGhXQO9uFERlb2gE';
+		var p = spotlib.getTrackById(id);
+		p.then(s=>silenceTrack = s);
+		return p;
 	}
+	// function silenceTracks() {
+	// 	if (!silenceTracks.id1) {
+	// 		silenceTracks.id1 = '6ZfRjAcExubAvJFOkZfGtI';
+	// 		silenceTracks.id2 = '2EeLn1LGhXQO9uFERlb2gE';
+	// 		silenceTracks.p = Promise.all([silenceTracks.id1, silenceTracks.id2].map(spotlib.getTrackById));
+	// 	}
+	// 	return silenceTracks.p;
+	// }
 	
 	function timerFun() {
-		if (timer)
-			spotlib.getStatus().then(s => {
-				statusTimer.next(s);
-				setTimeout(timerFun, timerPeriod);
-			});
-		else
+		spotlib.getStatus().then(s => {
+			statusTimer.next(s);
 			setTimeout(timerFun, timerPeriod);
+		});
 	}
 
 	function showCounters() {
@@ -118,40 +127,59 @@ function prova1() {
 	function initializeLists() {
 		var d = $.Deferred();
 
-		var dbPlaylists = db.getPlaylists()
-			.map(pl=> ({ id:pl.id, snapshot_id:pl.snapshot_id}))
-			.toArray()
-			.toPromise();
+		var oldDbPlaylists = db.getPlaylists();
+		oldDbPlaylists.then(x=>{console.log({oldDbPlaylists_x:x}); });
+		// oldDbPlaylists = oldDbPlaylists
+		// 	then(plset=>plset.map(pl=>({ id:pl.id, snapshot_id:pl.snapshot_id, name:pl.name})))
 		
-		
-		var livePlaylistsRx = Rx.Observable
-			.fromPromise(spotlib.getPlaylists())
-			.flatMap(x => x.items);
+		var livePlaylists = $.Deferred();
+		oldDbPlaylists.then(function() {
+			spotlib.getPlaylists()
+				.then(resp=> livePlaylists.resolve(resp.items));
+		});
+		livePlaylists.then(x=>console.log({livePlaylists_x:x}));
+		// var dbThenLive = oldDbPlaylists.then(spotlib.getPlaylists);
 
-		var livePlaylists = livePlaylistsRx
-			.toArray()
-			.toPromise()
-			.then(db.setPlaylists);
+		// var livePlaylists = Rx.Observable
+		// 	.fromPromise(dbThenLive)
+		// 	.flatMap(x => x.items)
+		// 	.toArray()
+		// 	.toPromise();
 
+		//livePlaylists.then(x=>console.log({livePlaylists:x}));
+		livePlaylists.then(db.setPlaylists).then(showCounters);
 
-		livePlaylists.then(showCounters);
+		var selectedPlaylists = livePlaylists.then(choosePlaylists);
 
-		var selectedPlaylists = livePlaylists.then(x=>choosePlaylists(x));
-
-		var readyPlaylistsIds = Promise.all([selectedPlaylists, dbPlaylists])
+		var readyPlaylistsIds = Promise.all([selectedPlaylists, oldDbPlaylists])
 		.then(([selected, stored])=>{
 			show(selected, 'selected');
 			show(stored, 'stored');
-			const changed = x =>
-				resetNeeded || !_.some(stored, y => x.id==y.id && x.snapshot_id==y.snapshot_id);
-			
-			_.each(selected, x=>changed(x)?msg('chg '+x.name):false);
+			function isChanged(x) {
+				for(var i=0; i<oldDbPlaylists.length; i++) {
+					let y = oldDbPlaylists[i];
+					if (y.id==x.id) 
+						return  y.snapshot_id!=x.snapshot_id;
+				}
+				return false;
+			}
 
-			const r = selected.map(x=>
-				changed(x) ? db.updatePlaylist(x).then(()=>x.id) : x.id);
+			const changed = x =>
+				resetNeeded || !_.some(stored, y => x.id==y.id && x.snapshot_id!=y.snapshot_id);
 			
-			show(r, 'pre-update');
-			return Promise.all(r);
+			function update(x) {
+				if (resetNeeded || isChanged(x)) {
+					msg('chg '+x.name);
+					return db.updatePlaylist(x);
+				}
+				else 
+					return x;
+			}
+			_.each(selected, x=>isChanged(x)?msg('chg '+x.name):false);
+
+			r = selected.map(update);
+			show(r.map(x=>x.name), 'pre-update');
+			return Promise.all(r).then(x=>x.map(pl=>pl.id));
 		});
 
 		var tracks = readyPlaylistsIds
@@ -173,9 +201,7 @@ function prova1() {
 		tracks.then(x=>{
 			_tracks = _.flatten(x);
 			scramble(_tracks);
-			_cursor = 0;
-			commands.doTimer(true);
-			commands.doLoader(true);
+			_cursor = -1;
 			d.resolve();
 		});
 
@@ -195,18 +221,24 @@ function prova1() {
 				$('.play-progress').css({ top: $(window).height() - 30 });
 			}
 
+			div.on('click', '.button', function() {
+				$(this).css('opacity',0).animate({opacity:1}, 500);
+			});
 			setTimeout(function () {
-				$('.info-container', div).click(nextSong);
-				$('.b-prev').click(prevSong);
+				$('.info-container', div).click(function() {
+					if (playingMyList)
+						spotlib.playNext();
+					else
+						commands.startAt(0,0);
+				});
+				$('.b-prev').click(commands.gotoPrevious);
 				$('.b-delete').click(commands.deleteThisSong);
 				$('.b-add').click(commands.addThisSong);
 				$('.b-pause').click(commands.pause);
 				$('.b-resume').click(commands.resume);
 				$('.b-album').click(commands.album);
-				$('.b-p100').click(commands.doP100);
+				//$('.b-p100').click(commands.doP100);
 				$('.b-loop').click(loopSong);
-				$('.b-timer').click(commands.doTimer);
-				$('.b-loader').click(commands.doLoader);
 				$('.b-thumb-up').hide();
 				$('.b-thumb-down').hide();
 				$('.play-progress', div).click(commands.playProgressClick);
@@ -220,78 +252,151 @@ function prova1() {
 	}
 
 	commands = (function() {
+
+		function gotoNext() {
+			if (playingMyList)
+				spotlib.playNext();
+			else
+				commands.startAt(0,0);
+		}
+
+		function gotoPrevious() {
+			if (playingMyList)
+				spotlib.playPrevious();
+			else
+				commands.play(0,0);
+		}
+	
+
 		function pause() {
 			spotlib.pause();
 		}
 	
+		function startAt(cur, time) {
+			_cursor = (cur>=0) ? cur : 0;
+			time = time || 0;
+			msg('start@'+_cursor+':'+time).css({color:'yellow', backgroundColor:'black'});
+
+			var arr = [];
+			for(var i=0; i<100; i++) 
+				arr.push(_tracks[(_cursor+i)%_tracks.length]);
+			arr.push(silenceTrack.id);
+
+			msg('getting tracks');
+			Rx.Observable.from(arr)
+				//.map(x => db.getTrack(x))
+				.map(spotlib.getTrackById)
+				.map(x => Rx.Observable.fromPromise(x))
+				.mergeAll()
+				.map(x => x.uri)
+				//.map(x => {msg(x); return x})
+				.toArray()
+				.subscribe(arr => {
+					msg("play at"+_cursor+' N='+arr.length).css({backgroundColor:'#c0ffc0'});
+					console.log({arr:arr});
+					spotlib.playUri(arr, null, time).done(function () { msg('fatto'); });
+					playingMyList = true;
+				});
+		}
+
 		function album() {
 			var status;
-			function onAlbum(album) {
-				if (loader) {
-					var thisSongUri = status.item.uri;
-					var k = _cursor;
-					var ids = album.tracks.items.map(x => x.id);
-					spotlib.getTracksById(ids).done(result => {
+			var restart_ms;
+			var restart_cur;
+			function onAlbum(album) { 
+				var thisSongUri = status.item.uri;
+				var insertPoint = _cursor+1;
+				var ids = album.tracks.items.map(x => x.id);
+				spotlib.getTracksById(ids).done(result => {
+					if (result.tracks.length<=1) {
+						msg("nothing to do");
+						return;
+					}
+
+					var position = -1;
+					for (var i = 0; i < result.tracks.length; i++) 
+						if (result.tracks[i].uri == thisSongUri)
+							position = i;
+					
+					if (position>=0) {
+						msg('track at pos '+i);
+						for (var i = 1; i < result.tracks.length; i++) {
+							var tp = (i+position) % result.tracks.length;
+							var tr = result.tracks[tp];
+							_tracks.splice(insertPoint, 0, tr.id);
+							msg(insertPoint + '<-' + tp + ' ' + tr.name);
+							console.log(insertPoint + '<-' + tp + ' ' + tr.name);
+							insertPoint++;
+						}
+					}
+					else {
+						msg('traccia non trovata nell\'album');
 						for (var i = 0; i < result.tracks.length; i++) {
 							var tr = result.tracks[i];
 							if (tr.uri == thisSongUri)
 								continue;
-							_tracks.splice(k, 0, tr.id);
-							console.log('aggiunto in posizione ' + k + ': ' + tr.name);
-							msg(k + ' ' + tr.name);
-							k++;
+							_tracks.splice(insertPoint, 0, tr.id);
+							console.log('aggiunto in posizione ' + insertPoint + ': ' + tr.name);
+							msg(insertPoint + '<-' + i + ' ' + tr.name);
+							insertPoint++;
 						}
-	
-					});
-				}
-				else
-					spotlib.playUri(album.tracks.items.map(x => x.uri));
+					}
+					commands.startAt(restart_cur, restart_ms);
+					msg("CURSOR="+_cursor+" INSERT"+insertPoint);
+				});
 			}
 			spotlib.getStatus().done(s => {
 				status = s;
+				if (_cursor>=0) {
+					restart_cur = _cursor;
+					restart_ms = s.progress_ms;
+				}
 				spotlib.getAlbum(status.item.album.id).done(onAlbum);
 			});
 		}
 		
-		function doP100() {
-			console.log('p100');
-			var arr = [];
-			for (var i = 0; i < 100; i++) {
-				var tr = _tracks[(_cursor + i) % _tracks.length];
-				arr.push(tr);
-			}
-			Rx.Observable.from(arr)
-				.map(x => db.getTrack(x))
-				.map(x => Rx.Observable.fromPromise(x))
-				.mergeAll()
-				.map(x => x.uri)
-				.toArray()
-				.subscribe(arr => {
-					spotlib.playUri(arr).done(function () { msg('fatto'); });
-					doLoader(false);
-				});
-		}
+		// function doP100() {
+		// 	console.log('p100');
+		// 	spotlib.getStatus().done(s => {
+		// 		var song = s.item;
+		// 		var progress = s.progress_ms;
+		// 		updateSong(song);
+		// 		if (_cursor>0 && _tracks[_cursor] ==song.id) {
+		// 			// sto effettivamente suonando una traccia della mia lista
+		// 		}
+		// 		else {
+		// 			// inserisco la traccia corrente in testa
+		// 			if (_cursor<0) {
+		// 				_tracks.splice(0,0, song.id);
+		// 				_cursor = 0;
+		// 			}
+		// 			else 
+		// 				_tracks.splice(_cursor, 0, song.id);
+		// 		}
+
+		// 		var arr = [];
+		// 		for (var i = 0; i < 100; i++) {
+		// 			var tr = _tracks[(_cursor + i) % _tracks.length];
+		// 			arr.push(tr);
+		// 		}
+		// 		arr.push(silenceTrack.id);
+
+		// 		msg('getting tracks');
+		// 		Rx.Observable.from(arr)
+		// 			.map(x => db.getTrack(x))
+		// 			.map(x => Rx.Observable.fromPromise(x))
+		// 			.mergeAll()
+		// 			.map(x => x.uri)
+		// 			.toArray()
+		// 			.subscribe(arr => {
+		// 				spotlib.playUri(arr, null, progress).done(function () { msg('fatto'); });
+		// 				playingMyList = true;
+		// 			});
 	
-		function doTimer(evt) {
-			if (typeof (x) == 'boolean')
-				timer = x;
-			else
-			timer = !timer;
-			msg('doTimer ' + timer);
-	
-			$('.b-timer i').css({ color: (timer) ? "white" : "gray" });
-		}
-	
-		function doLoader(x) {
-			if (typeof (x) == 'boolean')
-				loader = x;
-			else
-				loader = !loader;
-			
-			msg('doLoader ' + loader);
-			$('.b-loader i').css({ color: (loader) ? "white" : "gray" });
-		}
-	
+		// 	});
+
+		// }
+		
 		function resume() {
 			// $('.b-resume').hide();
 			// $('.b-pause').show();
@@ -305,7 +410,7 @@ function prova1() {
 				.then(arr => arr.map(pl => delFrom(pl)))
 				.then(promises => $.when.apply($, promises))
 				.then(() => msg('DONE'))
-				.always(nextSong);
+				.always(commands.gotoNext);
 	
 			function delFrom(pl) {
 				console.log('DELETE FROM ')
@@ -373,7 +478,7 @@ function prova1() {
 		function playProgressClick(evt) {
 			spotlib.getStatus().done(status => {
 				try {
-					showSong(status.item);
+					updateSong(status.item);
 					var x = evt.originalEvent.clientX;
 					if (!status.is_playing)
 						return;
@@ -388,15 +493,16 @@ function prova1() {
 		}
 
 		return  {
+			gotoNext: gotoNext,
+			gotoPrevious: gotoPrevious,
 			pause: pause,
 			album: album,
-			doP100: doP100,
-			doTimer: doTimer,
-			doLoader: doLoader,
+			//doP100: doP100,
 			resume: resume,
 			deleteThisSong: deleteThisSong,
 			addThisSong: addThisSong,
-			playProgressClick:playProgressClick
+			playProgressClick:playProgressClick,
+			startAt: startAt
 		}
 	})();
 
@@ -406,15 +512,17 @@ function prova1() {
 	function onStatus(status) {
 		if (!status|| !status.item)
 			return;
+
+		curTrack = status.item;
 		var id = status.item.id;
-		if (id != silenceTracks.id1 && id != silenceTracks.id2 && id != onStatus.lastSong) {
-			playingSongSubject.next(status.item);
+		if (id != onStatus.lastSong) {
+			if (id != silenceTrack.id) 
+				playingSongSubject.next(status.item);
 		}
 		onStatus.lastSong = status.item.id;
 		var play = status.is_playing;
 		var active = (status.device) ? status.device.is_active : false;
 		var dev = status.device.name;
-		var k = !!status.progress_ms;
 		var p = status.timestamp - status.progress_ms;
 
 		$('.buttons .b-resume').toggleClass('hidden', play);
@@ -431,14 +539,17 @@ function prova1() {
 		var fineBrano = status.progress_ms > 0 && status.progress_ms == status.item.duration_ms;
 
 		// se il brano corrente è il "silence" siamo in pausa
-		var silence = (status.item.id == silenceTracks.id1) || (status.item.id == silenceTracks.id2);
+		var silence = (status.item.id == silenceTrack.id);
 		
 		barra(status);
 
 		// next song
-		if (loader && status.device)
-			if (silence || fineBrano)
-				nextSong();
+		if (status.device) {
+			if (silence || fineBrano) {
+				playingMyList = false;
+				commands.gotoNext();
+			}
+		}
 	};
 	statusTimer.subscribe(onStatus);
 
@@ -454,7 +565,11 @@ function prova1() {
 		var b = $('.play-progress');
 		var w = b.width();
 		$('.barra-w, .barra-b', b).width(b.width());
-		$('.bleft', b).text((play ? 'P' : '!P') + ' ' + (active ? 'A' : '!A'));
+		$('.bleft', b).text(
+			(play ? 'P' : '!P') + ' ' 
+			+ (active ? 'A' : '!A')+ ' '
+			+ (playingMyList? 'L:'+_cursor : '')
+		);
 		$('.bmiddle', b).text(moment.utc(status.progress_ms).format("mm:ss")
 			 + ' ' + Math.floor(status.progress_ms/(songlen+1)*10000)/100+'%' 
 		);
@@ -484,38 +599,22 @@ function prova1() {
 		}
 	}
 
-	function prevSong() {
-		spotlib.getStatus().done(status => {
-			if (!status.is_playing)
-				return;
 
-			if (status.progress_ms > 10000) {
-				spotlib.seek(0);
-			}
-			else {
-				_cursor = (_cursor - 2 + _tracks.length) % _tracks.length;
-				nextSong();
-			}
-		});
-	}
-
-	function nextSong() {
-		console.log('nextSong');
-		if (!_tracks || (_tracks.length == 0)) {
-			msg('lista tracce vuota');
-			return;
-		}
-		msg('song cursor = ' + _cursor);
-		var trId = _tracks[_cursor];
-		_cursor = (_cursor + 1) % _tracks.length;
-		silenceTracks().then(silences => {
-			console.log({getSilenceTracks:silences});
-			db.getTrack(trId).done(tr => {
-				showSong(tr);
-				spotlib.playUri([tr.uri, silences[0].uri, silences[1].uri]);
-			});
-		});
-	}
+	// function nextSong() {
+	// 	console.log('nextSong');
+	// 	if (!_tracks || (_tracks.length == 0)) {
+	// 		msg('lista tracce vuota');
+	// 		return;
+	// 	}
+	// 	_cursor = (_cursor + 1) % _tracks.length;
+	// 	msg('song cursor = ' + _cursor);
+	// 	var trId = _tracks[_cursor];
+	// 	db.getTrack(trId).done(tr => {
+	// 		updateSong(tr);
+	// 		spotlib.playUri([tr.uri, silenceTrack.uri]);
+	// 		playingMyList = true;
+	// 	});
+	// }
 
 	var loopSong = function(){
 		var state = a;
