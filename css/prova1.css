@@ -57,9 +57,9 @@
   text-align: center;
 }
 .sel-pl > div button {
-  padding: 8px;
-  margin: 5px;
-  font-size: 15px;
+  padding: 18px;
+  margin: 5px ;
+  font-size: 20px;
   width: 90%;
 }
 .play-progress {
@@ -72,7 +72,7 @@
   z-index: 999;
 }
 .play-progress {
-  opacity: .7;
+  opacity: 0.7;
 }
 .play-progress .barra-meter {
   height: 30px;

@@ -165,10 +165,11 @@ var db = (function () {
 				};
 				var tracks = transaction.objectStore("tracks");
 				var trpl = transaction.objectStore("tr-pl");
+				console.log('found '+arr.length+' tracks in '+pl.name);
 				for(var i=0;i<arr.length;i++) {
 					var tr = arr[i];
 					trpl.put({tr:tr.id, pl:pl.id});
-					//console.log({tr:tr.id, pl:pl.id});
+					console.log({tr:tr.id, pl:pl.id});
 					if (!tr.id) {
 						debugger;
 						console.log(tr);
@@ -396,7 +397,7 @@ var db = (function () {
 				ret.resolve(req.result);
 			else {
 				ret.resolve(null);
-				msg("not found in DB").css({color:'red'});
+				//msg("not found in DB "+id).css({color:'red'});
 			}
 		}
 		req.onerror = function(event) {

@@ -106,6 +106,7 @@ var spotlib = {
 	function getPlaylistIds() {
 		console.log('getPlaylistIds');
 		return callSpotify("https://api.spotify.com/v1/me/playlists", { limit: 50 }).done(function (x) {
+			debugger;
 			spotlib.playlists = x;
 		}).then(x=>{
 			return x.items.map(y=>y.id);
@@ -387,8 +388,6 @@ var spotlib = {
 	function getTrackById(id) {
 		var ret = $.Deferred();
 		console.log('get from db '+id);
-		if (!id)
-			debugger;
 		db.getTrack(id).then(tr=> {
 			if (tr!=null) {
 				ret.resolve(tr);
@@ -514,12 +513,27 @@ var spotlib = {
 		// generazione nuovo token
 		d = getToken.d = $.Deferred();
 
+		var scope=["playlist-read-private","playlist-read-collaborative",
+			"playlist-modify-public","playlist-modify-private",
+			"user-library-read","user-library-modify",
+			"user-read-private","user-top-read",
+			"user-read-playback-state", "user-modify-playback-state"
+		].join(' ');
+
+		var u = "https://accounts.spotify.com/authorize"
+			+ "?client_id=5bc49ed38d23431f88c4bf5258814a48"
+			+ "&response_type=token"
+			//+ "&redirect_uri=http%3A//www.andrenacci.com/spotify/callback.php"
+			+ "&redirect_uri=http%3A//127.0.0.1/web/spotify/callback.php"
+			+ "&scope="+scope
+			+ "&state=jumpback";
 		if (!getToken.listenerAdded) {
 			window.addEventListener("message", function (event){
 				//console.log({event:event});
 				try {
 					var msg = JSON.parse(atob(event.data));
-					console.log({msg:msg});
+					this.alert(JSON.stringify(msg));
+					//console.log({msg:msg});
 					localStorage.cspot4Token = msg.token;
 					getToken.expire = new Date().getTime()+3600*1000;
 					localStorage.cspot4TokenExpire = ""+getToken.expire;
@@ -528,7 +542,7 @@ var spotlib = {
 			}, false);
 			getToken.listenerAdded = true;
 		}
-		window.open('./auth/index.html?__START__=1');
+		window.open(u);
 		return d;
 	}
 
@@ -610,3 +624,6 @@ var spotlib = {
 
 })();
 
+function newLogin() {
+	window.open('./auth?__START__=1');
+}

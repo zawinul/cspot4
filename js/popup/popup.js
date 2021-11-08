@@ -1,5 +1,5 @@
-var popup = (function(){
-	function alert(txt) {
+var popup = (function(){  
+	function alert(txt, timeout) {
 		var ret = $.Deferred();
 		var div = $('<div class="popup alert"><div class="text"/><div class="ok">OK</div></div>');
 		$('.text', div).text(txt);
@@ -8,6 +8,18 @@ var popup = (function(){
 			ret.resolve();
 		});
 		$('body').append(div);
+		// if (timeout) {
+		// 	console.log('set timeout '+timeout);
+		// 	setTimeout(function(){
+		// 		console.log('timed out'); 
+		// 		$('.ok', div).trigger('click');
+		// 	}, timeout);
+		// }
+		if (timeout) {
+			visibleTimeout(timeout).then(()=>{
+				$('.ok', div).trigger('click');
+			});
+		}
 		return ret;
 	}
 

@@ -55,7 +55,7 @@ var aws = (function () {
 	}
 
 	function init() {
-		msg('AWS Init');
+		//msg('AWS Init');
 		$.getScript("https://sdk.amazonaws.com/js/aws-sdk-2.188.0.min.js", start);
 
 		function start() {

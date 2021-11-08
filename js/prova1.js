@@ -6,6 +6,10 @@ var statusTimer = new Rx.ReplaySubject(1);
 //var changedPlaylists;
 var blacklistMap;
 var resetNeeded = false;
+//var silenceTrackId = '6ZfRjAcExubAvJFOkZfGtI';
+//var silenceTrackId = '2EeLn1LGhXQO9uFERlb2gE';
+var silenceTrackId = '1nKY2o8XQG1RvUCpBV5VSK';
+
 var silenceTrack;
 var _tracks = null, _cursor = -1;
 var timerPeriod = 5000;
@@ -19,30 +23,29 @@ function prova1() {
 	resetNeeded = location.href.indexOf('reset')>=0;
 	var playingMyList = false;
 
-	function initialize() {
+	async function initialize() {
 		$('.app').fadeOut(1);
 
 		playingSongSubject.subscribe(updateSong);
 		playingSongSubject.subscribe(x => msg(x.name).css({backgroundColor:'white'}));
 
-		db.isReady
-			.then(spotlib.init)
+		await db.isReady;
+		await spotlib.init();
 			//.then(startNoSleep)
-			.then(initializeDevice)
-			.then(d => {msg('D=' + d.name);})
-			.then(initializeBlacklist)
-			.then(spotlib.getProfile)
-			.then(u => (me = u))
-			.then(loadCss)
-			.then(initializeLists)
-			.then(initializePage)
-			.then(timerFun)
-			.then(getSilenceTrack)
-			.then(() => {
-				msg('initialize done');
-				prova1Initialized.resolve();
-			});
+		var d = await initializeDevice()
+		msg('D=' + d.name);
 
+		initializeBlacklist();
+		me = await spotlib.getProfile();
+
+		loadCss();
+		await initializeLists();
+		await initializePage();
+		timerFun();
+
+		await getSilenceTrack();
+		msg('initialize done');
+		prova1Initialized.resolve();
 	}
 
 	function updateSong(song) {
@@ -56,7 +59,7 @@ function prova1() {
 				let x = _tracks[i];
 				if (x==song.id) {
 					_cursor = i;
-					msg('synch '+i);
+					msg(''+i).css({fontSize:24, textAlignment:'center', fontWeight:'bold'});
 					found = true;
 					break;
 				}
@@ -87,21 +90,9 @@ function prova1() {
 	}
 	
 	function getSilenceTrack() {
-		//var id = '6ZfRjAcExubAvJFOkZfGtI';
-		var id = '2EeLn1LGhXQO9uFERlb2gE';
-		var p = spotlib.getTrackById(id);
-		p.then(s=>silenceTrack = s);
-		return p;
+		var p = spotlib.getTrackById(silenceTrackId);
+		return p.then(s=>silenceTrack = s);
 	}
-	// function silenceTracks() {
-	// 	if (!silenceTracks.id1) {
-	// 		silenceTracks.id1 = '6ZfRjAcExubAvJFOkZfGtI';
-	// 		silenceTracks.id2 = '2EeLn1LGhXQO9uFERlb2gE';
-	// 		silenceTracks.p = Promise.all([silenceTracks.id1, silenceTracks.id2].map(spotlib.getTrackById));
-	// 	}
-	// 	return silenceTracks.p;
-	// }
-	
 	function timerFun() {
 		spotlib.getStatus().then(s => {
 			statusTimer.next(s);
@@ -120,90 +111,84 @@ function prova1() {
 		localStorage.blacklist = "";
 
 		var blacklistArray = localStorage.blacklist.split(";").filter(x=>x);
+		msg('BL:'+blacklistArray.length).css({backgroundColor:'#ffd0d0'});
 		blacklistMap = _.reduce(blacklistArray, (a,b)=>{a[b]=true; return a;},{});
 		return true;
 	}
 
-	function initializeLists() {
+	async function initializeLists() {
+
 		var d = $.Deferred();
+		var oldDbPlaylists = await db.getPlaylists();
+		show(oldDbPlaylists, 'oldDbPlaylists');
 
-		var oldDbPlaylists = db.getPlaylists();
-		oldDbPlaylists.then(x=>{console.log({oldDbPlaylists_x:x}); });
-		// oldDbPlaylists = oldDbPlaylists
-		// 	then(plset=>plset.map(pl=>({ id:pl.id, snapshot_id:pl.snapshot_id, name:pl.name})))
+
+		var livePlaylists = await spotlib.getPlaylists();
+		livePlaylists = livePlaylists.items;
+		show(livePlaylists, 'livePlaylists');
+
+		showCounters();
+
+		//livePlaylists.then(x=>console.log({livePlaylists_x:x})); 
+		var dbPlaylists = await db.setPlaylists(livePlaylists);
 		
-		var livePlaylists = $.Deferred();
-		oldDbPlaylists.then(function() {
-			spotlib.getPlaylists()
-				.then(resp=> livePlaylists.resolve(resp.items));
-		});
-		livePlaylists.then(x=>console.log({livePlaylists_x:x}));
-		// var dbThenLive = oldDbPlaylists.then(spotlib.getPlaylists);
+		var selectedPlaylists = await choosePlaylists(livePlaylists);
+		show(selectedPlaylists, 'selectedPlaylists');
 
-		// var livePlaylists = Rx.Observable
-		// 	.fromPromise(dbThenLive)
-		// 	.flatMap(x => x.items)
-		// 	.toArray()
-		// 	.toPromise();
-
-		//livePlaylists.then(x=>console.log({livePlaylists:x}));
-		livePlaylists.then(db.setPlaylists).then(showCounters);
-
-		var selectedPlaylists = livePlaylists.then(choosePlaylists);
-
-		var readyPlaylistsIds = Promise.all([selectedPlaylists, oldDbPlaylists])
-		.then(([selected, stored])=>{
+		//var readyPlaylistsIds = Promise.all([selectedPlaylists, oldDbPlaylists])
+		async function p(selected, stored) {
 			show(selected, 'selected');
 			show(stored, 'stored');
 			function isChanged(x) {
-				for(var i=0; i<oldDbPlaylists.length; i++) {
-					let y = oldDbPlaylists[i];
-					if (y.id==x.id) 
-						return  y.snapshot_id!=x.snapshot_id;
-				}
-				return false;
+				var found = _.find(stored,y=> y.id==x.id);
+				if (!found)
+					return true;
+				x.old_snapshot_id = found.snapshot_id;
+				var ret = (found) ? x.old_snapshot_id!=x.snapshot_id: true;
+				if (ret)
+					console.log('CHANGED '+!!found+' '+ x.name+' ['+ x.old_snapshot_id+'] ['+x.snapshot_id+']');
+				return ret;
 			}
 
-			const changed = x =>
-				resetNeeded || !_.some(stored, y => x.id==y.id && x.snapshot_id!=y.snapshot_id);
-			
-			function update(x) {
-				if (resetNeeded || isChanged(x)) {
-					msg('chg '+x.name);
-					return db.updatePlaylist(x);
+			var r =  [];
+			for(var i=0; i<selected.length; i++) {
+				let list = selected[i];
+				let changed = isChanged(list);
+				if (resetNeeded || changed) {
+					msg('chg '+list.name);
+					r[i] = await db.updatePlaylist(list);
 				}
-				else 
-					return x;
+				else {
+					msg('NOT chg '+list.name);
+					r[i] = list;
+				}
 			}
-			_.each(selected, x=>isChanged(x)?msg('chg '+x.name):false);
 
-			r = selected.map(update);
-			show(r.map(x=>x.name), 'pre-update');
-			return Promise.all(r).then(x=>x.map(pl=>pl.id));
-		});
-
-		var tracks = readyPlaylistsIds
-			.then(lists=>db.getTrackIds(lists))
-			.then(arr=>{
-				var ok = arr.filter(x=>!blacklistMap[x]);
-				var filt = arr.filter(x=>blacklistMap[x]);
-				msg ("BL: ok="+ok.length+" no:"+filt.length)
-					.css({ backgroundColor:'black', color:'white'});
-				return ok;
-			});
+			//show(r.map(x=>x.name), 'pre-update');
+			//return Promise.all(r).then(x=>x.map(pl=>pl.id));
+			var idList = r.map(pl=>pl.id);
+			return idList;
+		}
+		debugger;
+		var readyPlaylistsIds = await p(selectedPlaylists, oldDbPlaylists);
+		show(readyPlaylistsIds, 'readyPlaylistsIds');
+		var arr = await db.getTrackIds(readyPlaylistsIds);
+		show(arr, 'arr');
+		var ok = arr.filter(x=>!blacklistMap[x]);
+		var filt = arr.filter(x=>blacklistMap[x]);
+		msg ("BL: ok="+ok.length+" no:"+filt.length)
+			.css({ backgroundColor:'black', color:'white'});
 		
 		// show(dbPlaylists, 'dbPlaylists');
 		// show(livePlaylists, 'livePlaylists');
 		// show(selectedPlaylists, 'selectedPlaylists');
 		// show(readyPlaylistsIds, 'readyPlaylistsIds');
-		// show(tracks, 'tracks');
+		//show(tracks, 'tracks');
 		
-		tracks.then(x=>{
-			_tracks = _.flatten(x);
-			scramble(_tracks);
-			_cursor = -1;
-			d.resolve();
-		});
+		_tracks = _.flatten(ok);
+		scramble(_tracks);
+		_cursor = -1;
+		d.resolve();
 
 		return d;
 	}
@@ -226,6 +211,7 @@ function prova1() {
 			});
 			setTimeout(function () {
 				$('.info-container', div).click(function() {
+					debugger;
 					if (playingMyList)
 						spotlib.playNext();
 					else
@@ -280,7 +266,7 @@ function prova1() {
 			var arr = [];
 			for(var i=0; i<100; i++) 
 				arr.push(_tracks[(_cursor+i)%_tracks.length]);
-			arr.push(silenceTrack.id);
+			arr.push(silenceTrackId);
 
 			msg('getting tracks');
 			Rx.Observable.from(arr)
@@ -355,47 +341,6 @@ function prova1() {
 			});
 		}
 		
-		// function doP100() {
-		// 	console.log('p100');
-		// 	spotlib.getStatus().done(s => {
-		// 		var song = s.item;
-		// 		var progress = s.progress_ms;
-		// 		updateSong(song);
-		// 		if (_cursor>0 && _tracks[_cursor] ==song.id) {
-		// 			// sto effettivamente suonando una traccia della mia lista
-		// 		}
-		// 		else {
-		// 			// inserisco la traccia corrente in testa
-		// 			if (_cursor<0) {
-		// 				_tracks.splice(0,0, song.id);
-		// 				_cursor = 0;
-		// 			}
-		// 			else 
-		// 				_tracks.splice(_cursor, 0, song.id);
-		// 		}
-
-		// 		var arr = [];
-		// 		for (var i = 0; i < 100; i++) {
-		// 			var tr = _tracks[(_cursor + i) % _tracks.length];
-		// 			arr.push(tr);
-		// 		}
-		// 		arr.push(silenceTrack.id);
-
-		// 		msg('getting tracks');
-		// 		Rx.Observable.from(arr)
-		// 			.map(x => db.getTrack(x))
-		// 			.map(x => Rx.Observable.fromPromise(x))
-		// 			.mergeAll()
-		// 			.map(x => x.uri)
-		// 			.toArray()
-		// 			.subscribe(arr => {
-		// 				spotlib.playUri(arr, null, progress).done(function () { msg('fatto'); });
-		// 				playingMyList = true;
-		// 			});
-	
-		// 	});
-
-		// }
 		
 		function resume() {
 			// $('.b-resume').hide();
@@ -516,7 +461,7 @@ function prova1() {
 		curTrack = status.item;
 		var id = status.item.id;
 		if (id != onStatus.lastSong) {
-			if (id != silenceTrack.id) 
+			if (id != silenceTrackId) 
 				playingSongSubject.next(status.item);
 		}
 		onStatus.lastSong = status.item.id;
@@ -539,7 +484,7 @@ function prova1() {
 		var fineBrano = status.progress_ms > 0 && status.progress_ms == status.item.duration_ms;
 
 		// se il brano corrente è il "silence" siamo in pausa
-		var silence = (status.item.id == silenceTrack.id);
+		var silence = (status.item.id == silenceTrackId);
 		
 		barra(status);
 
@@ -599,22 +544,6 @@ function prova1() {
 		}
 	}
 
-
-	// function nextSong() {
-	// 	console.log('nextSong');
-	// 	if (!_tracks || (_tracks.length == 0)) {
-	// 		msg('lista tracce vuota');
-	// 		return;
-	// 	}
-	// 	_cursor = (_cursor + 1) % _tracks.length;
-	// 	msg('song cursor = ' + _cursor);
-	// 	var trId = _tracks[_cursor];
-	// 	db.getTrack(trId).done(tr => {
-	// 		updateSong(tr);
-	// 		spotlib.playUri([tr.uri, silenceTrack.uri]);
-	// 		playingMyList = true;
-	// 	});
-	// }
 
 	var loopSong = function(){
 		var state = a;

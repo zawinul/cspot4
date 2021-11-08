@@ -1,6 +1,8 @@
 // .
 function choosePlaylists(playListsArray) {
 	var ret = $.Deferred();
+	var autoclick;
+
 	ret.then(function(arr){
 		var data = arr.map(pl=>pl.name);
 		localStorage.cspot2playlists = JSON.stringify(data);
@@ -24,11 +26,14 @@ function choosePlaylists(playListsArray) {
 			var d = template.clone().appendTo(container).text(pl.name).addClass('item').attr('id',id);
 			d.data('pl', pl);
 			d.click(function () {
+				autoclick.stop();
 				$(this).toggleClass('selected');
 			});
 			pl.idbottone = id;
 			d.toggleClass('selected', x.length == 0 || x.indexOf(pl.name) >= 0);
 		});
+		autoclick = visibleTimeout(8000);
+		autoclick.then(onRefreshClick);
 	}
 
 	function onRefreshClick() {
@@ -41,12 +46,14 @@ function choosePlaylists(playListsArray) {
 		div.remove();
 	}
 
-	// function onOkClick() {
-	// 	$('.okbutton,.refreshbutton', '.select-playlist-div').remove();
-	// 	var s = Rx.Observable.from($('.selected', div)).map(x => $(x).data('pl'));
-	// 	s.subscribe(ret);
+	function startAutoClick() {
 
-	// 	div.remove();
-	// };
+	}
+
+	function stopAutoClick() {
+
+	}
+
+	
 	return ret;
 }
