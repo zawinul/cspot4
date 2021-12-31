@@ -8,13 +8,7 @@ var popup = (function(){
 			ret.resolve();
 		});
 		$('body').append(div);
-		// if (timeout) {
-		// 	console.log('set timeout '+timeout);
-		// 	setTimeout(function(){
-		// 		console.log('timed out'); 
-		// 		$('.ok', div).trigger('click');
-		// 	}, timeout);
-		// }
+
 		if (timeout) {
 			visibleTimeout(timeout).then(()=>{
 				$('.ok', div).trigger('click');

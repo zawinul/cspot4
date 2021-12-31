@@ -1,0 +1,22 @@
+playstatus
+	get -> torna un oggetto con lo stato attuale a una promise per il prossimo
+	listen -> aggancia un listener
+	refresh -> forza il refresh, non torna niente
+
+libstatus
+	sync in -> legge da aws
+	sync out -> scrive su aws
+	get/set playlists, blacklist, selected_playlist, available_playlist
+	save -> su db
+	 
+log
+	write
+	show
+	clear(n) -> cancella lasciando gli ultimi n
+
+all'avvio
+	legge da mem: cur device, playlists, blacklist etc...
+	se cur device è attivo avvio immediato else scelta device (se ce n'è + di 1) e avvio immediato
+	funzione scelta playlist da button
+	invia 100
+	

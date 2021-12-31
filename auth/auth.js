@@ -1,5 +1,6 @@
 
 function init() {
+	console.log('start'); 
 	if (location.href.indexOf('__START__')>=0)
 		start();
 	else
@@ -40,7 +41,7 @@ function receive() {
 	}
 	console.log({ params:pars});
 	
-	if (window.opener.postMessage) {
+	if (window.opener && window.opener.postMessage) {
 		var msg = { cmd:'onToken', token:pars.access_token, url:location.href };
 		window.opener.postMessage(btoa(JSON.stringify(msg)), "*");
 	}

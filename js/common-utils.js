@@ -54,5 +54,18 @@ var getSilenceTracks = singleton(function () {
 	return Promise.all([silence1Id, silence2Id].map(spotlib.getTrackById))
 });
 
+function semplifica(obj, fields) {
+	if (!fields)
+		fields=[];
+
+	if (typeof fields=='string')
+		fields=fields.split(',').map(x=>x.trim());
+
+	var ret = {};
+	for(var f of fields)
+		ret[f] = obj[f];
+	return ret;
+}
+
 
 

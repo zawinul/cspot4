@@ -7,10 +7,6 @@ function initializeDevice() {
 		curdev=(status) ? status.device : null;
 	})
 	.then(spotlib.getDevices)
-	// .done(devices=>{
-	// 	for (var i = 0; i < devices.length; i++)
-	// 		msg('-> '+ devices[i].name);
-	// })
 	.then(selectDevice)
 	.then(d=>{
 		msg('device corrente = ' + d.name);
@@ -35,7 +31,6 @@ function initializeDevice() {
 	function selectDevice(devices) {
 		var ret = $.Deferred();
 		var prevDev = (localStorage) ? localStorage.currDeviceId : null;
-		var dev;
 
 		if (!devices || devices.length == 0) {
 			popup.alert('non ci sono devices disponibili');

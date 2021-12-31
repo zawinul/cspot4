@@ -28,7 +28,8 @@ var spotlib = {
 
 		function onToken(token) {
 			if (!req.myNoLog)
-				console.log('calling '+req.method+' '+req.url+' '+(req.data||""));
+				if (req.url!='https://api.spotify.com/v1/me/player')
+					console.log('calling '+req.method+' '+req.url+' '+(req.data||""));
 			if (!req.headers)
 				req.headers={};
 			req.headers.Authorization = 'Bearer '+token;
@@ -91,8 +92,9 @@ var spotlib = {
 
 	function getProfile() {
 		console.log('getProfile');
-		return callSpotify("https://api.spotify.com/v1/me").done(function (x) {
+		return callSpotify("https://api.spotify.com/v1/me").then(function (x) {
 			spotlib.profile = x;
+			return x;
 		});
 	}
 
@@ -317,36 +319,65 @@ var spotlib = {
 		return spotlib.sendReq(opt);	
 	}
 
-	function getPlaylistTracks(plist) {
+	async function getPlaylistTracks(plist) {
 		console.log('getPlaylistTracks ' + plist.name);
 		var limit = 100;
 		var offsetbase = 0;
 		var offset = offsetbase;
-		var ret = $.Deferred();
-
-		function f() {
-			console.log('get offset=' + offset);
-			var u = plist.href;
-			u += "/tracks?offset=" + offset + "&limit=" + limit;
-			callSpotify(u).done(onData);
-		}
-
-		function onData(x) {
-			if (offset === 0)
-				plist.tracks = x;
-			else
-				for (var i = 0; i < x.items.length; i++)
-					plist.tracks.items.push(x.items[i]);
-			//console.log("act="+plist.tracks.items.length+" of "+x.total);
-			offset = plist.tracks.items.length;
-			if (offset < x.total)
-				f();
-			else
-				ret.resolve(plist);
-		}
-		f();
-		return ret;
+		var ret = [];
+		var total='?';
+		return new Promise(function(resolve, reject){
+			function f() {
+				console.log('get offset=' + offset+ ' (total='+total+')');
+				var u = plist.href;
+				u += "/tracks?offset=" + offset + "&limit=" + limit;
+				callSpotify(u).done(onData);
+			}
+			function onData(x) {
+				total = x.total;
+				for (var tr of x.items)
+					ret.push(tr);
+				offset = ret.length;
+				if (offset < x.total)
+					f();
+				else
+					resolve(ret);
+			}
+			f();
+		});
 	}
+
+
+	// function OLD_getPlaylistTracks(plist) {
+	// 	console.log('getPlaylistTracks ' + plist.name);
+	// 	var limit = 100;
+	// 	var offsetbase = 0;
+	// 	var offset = offsetbase;
+	// 	var ret = $.Deferred();
+
+	// 	function f() {
+	// 		console.log('get offset=' + offset);
+	// 		var u = plist.href;
+	// 		u += "/tracks?offset=" + offset + "&limit=" + limit;
+	// 		callSpotify(u).done(onData);
+	// 	}
+
+	// 	function onData(x) {
+	// 		if (offset === 0)
+	// 			plist.tracks = x;
+	// 		else
+	// 			for (var i = 0; i < x.items.length; i++)
+	// 				plist.tracks.items.push(x.items[i]);
+	// 		//console.log("act="+plist.tracks.items.length+" of "+x.total);
+	// 		offset = plist.tracks.items.length;
+	// 		if (offset < x.total)
+	// 			f();
+	// 		else
+	// 			ret.resolve(plist);
+	// 	}
+	// 	f();
+	// 	return ret;
+	// }
 
 	function getAlbum(id) {
 		var req = {
@@ -384,27 +415,41 @@ var spotlib = {
 		return null;
 	}
 
-	function getTrackById(id) {
-		var ret = $.Deferred();
-		console.log('get from db '+id);
-		if (!id)
-			debugger;
-		db.getTrack(id).then(tr=> {
-			if (tr!=null) {
-				ret.resolve(tr);
-				return;
-			}
-			var req = {
-				method: 'GET',
-				url:'https://api.spotify.com/v1/tracks/'+id
-			};
-			sendReq(req).then(tr=>{
-				ret.resolve(tr);
-				console.log("ottenuta traccia "+id);
-			});
-		});
-		return ret;
+	async function getTrackById(id) {
+		var tr = asset.tracks[id];
+		if (asset.tracks[id])
+			return tr;
+
+		var req = {
+			method: 'GET',
+			url:'https://api.spotify.com/v1/tracks/'+id
+		};
+
+		asset.tracks[id] = tr = await sendReq(req);
+		return tr;
 	}
+
+	// function getTrackById(id) {
+	// 	var ret = $.Deferred();
+	// 	console.log('get from db '+id);
+	// 	if (!id)
+	// 		debugger;
+	// 	db.getTrack(id).then(tr=> {
+	// 		if (tr!=null) {
+	// 			ret.resolve(tr);
+	// 			return;
+	// 		}
+	// 		var req = {
+	// 			method: 'GET',
+	// 			url:'https://api.spotify.com/v1/tracks/'+id
+	// 		};
+	// 		sendReq(req).then(tr=>{
+	// 			ret.resolve(tr);
+	// 			console.log("ottenuta traccia "+id);
+	// 		});
+	// 	});
+	// 	return ret;
+	// }
 
 	function getTracksById(ids) {
 		var req = {
@@ -528,7 +573,7 @@ var spotlib = {
 			}, false);
 			getToken.listenerAdded = true;
 		}
-		window.open('./auth/index.html?__START__=1');
+		window.open('./auth/index.html?__START__=1&x='+Math.random());
 		return d;
 	}
 

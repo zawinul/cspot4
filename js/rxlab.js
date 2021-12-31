@@ -15,25 +15,4 @@ function ff(ob, tag) {
         });
 }
 
-Rx.Observable.prototype.chainSubscribe = function() {
-    this.subscribe.apply(this, arguments);
-    return this;
-};
-
-
-Rx.Observable.prototype.myDebug = function(tag) {
-    tag = tag || 'D|';
-
-    this.subscribe(
-        function (x) {
-            console.log({a:'next', tag:tag, item:x});
-        },
-        function (err) {
-            console.log({a:'error', tag:tag});
-        },
-        function () {
-            console.log({a:'completed', tag:tag });
-        });
-    return this;
-};  
 
