@@ -147,6 +147,9 @@ var asset = (function(){
 			data.selectedPlayLists = clone(v);
 			cache.localDbImage = null;
 		},
+		get status()  {
+			return data.status;
+		},
 		set status(s) {
 			console.log('set status');
 			var oldItemId = (data.status && data.status.item) ? data.status.item.id : null;
@@ -166,7 +169,7 @@ var asset = (function(){
 				eventListener[event] = [];
 			eventListener[event].push(listener);
 		},
-		refreshStatus: function(ms) {
+		refreshStatus: function(delay) {
 			spotStatus.refresh(delay);
 		}
 	}

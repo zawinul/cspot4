@@ -47,7 +47,10 @@ function prova2() {
 
 
 			asset.on('track-changed', updateSong);
-			asset.on('track-changed', x => msg(x.name).css({ backgroundColor: 'white' }));
+			asset.on('track-changed', function() {
+				if (asset.curItem) 
+					msg(asset.curItem.name).css({ backgroundColor: 'white' });
+			});
 			updateSong();
 			msg('initialize done');
 			prova2Initialized.resolve();
@@ -159,10 +162,12 @@ function prova2() {
 
 		function gotoPrevious() {
 			console.log('goto previous');
-			if (playingMyList)
-				spotlib.playPrevious();
+			var ms = asset.status ? asset.status.progress_ms : 0;
+			if (!ms || ms>5000)
+				spotlib.seek(0).then(asset.refreshStatus);
 			else
-				commands.play(0, 0);
+				spotlib.playPrevious().then(asset.refreshStatus);
+			asset.refreshStatus();
 		}
 
 
