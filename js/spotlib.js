@@ -189,44 +189,6 @@ var spotlib = {
 		return d;
 	}
 
-	function getPlaylistsTracksObservable(plObserver) {
-		// array o observable => observable
-		var x = $.isArray(plObserver)
-			? Rx.Observable.from(plObserver)
-			: plObserver;
-		return x 
-			.map(x=>getPlaylistTracksObservable(x))
-			.mergeAll();
-	}
-
-		
-	function getPlaylistTracksObservable(plist) {
-		if (typeof(plist)=='string')  // è un ID
-			return getPlaylistById(plist).then(getPlaylistTracksObservable);
-		
-		console.log('getPlaylistTracksObservable ' + plist.name);
-		//console.log(plist);
-		var limit = 100;
-
-		var k = [], c = 0;
-		while (c<=plist.tracks.total) {
-			k.push([c, limit]);
-			c += limit;
-		}
-
-		return Rx.Observable
-			.from(k)
-			.flatMap(function (a) {
-				var u = plist.href + "/tracks?offset=" + a[0] + "&limit=" + a[1];
-				console.log(u);
-				return Rx.Observable.fromPromise(callSpotify(u));
-			})
-			.flatMap(x => x.items)
-			.filter(x=>!!x.track)
-			//.doOnNext(x=>console.log({returnetSong:x}))
-			.map(x => x.track)
-			.filter(x=>!!x.id); // qualche volta le track hanno l'id==null !!!!
-	}
 
 	function getStatus() {
 		var req = {
@@ -425,7 +387,7 @@ var spotlib = {
 			url:'https://api.spotify.com/v1/tracks/'+id
 		};
 
-		asset.tracks[id] = tr = await sendReq(req);
+		//asset.tracks[id] = tr = await sendReq(req);
 		return tr;
 	}
 
@@ -642,10 +604,7 @@ var spotlib = {
 		playPrevious: playPrevious,
 		pause:pause,
 		resume:resume,
-		seek:seek,
-
-		getPlaylistTracksObservable: getPlaylistTracksObservable,
-		getPlaylistsTracksObservable: getPlaylistsTracksObservable
+		seek:seek
 	});
 
 
