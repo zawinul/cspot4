@@ -4,8 +4,8 @@ var commands;
 var div;
 
 var resetNeeded = false;
-var silenceTrackId = '1nKY2o8XQG1RvUCpBV5VSK';
-
+//var silenceTrackId = '1nKY2o8XQG1RvUCpBV5VSK';
+var silenceTrackId = '2bNCdW4rLnCTzgqUXTTDO1';
 var silenceTrack;
 var timerPeriod = 5000;
 var curTrack;
@@ -78,12 +78,19 @@ function prova2() {
 		$(".album", div).text("from: " + song.album.name);
 
 		$('body').css({ backgroundImage: 'url("' + song.album.images[0].url + '")' });
-
-		var arr = asset.trackPlaylists[song.id];
-		if (arr && arr.length >= 1) {
-			var pl = arr[0];
-			//$(".playlist", div).text("playlist: " + pl.name + ' (' + (pl.owner.display_name || pl.owner.id) + ')');
-			$(".playlist", div).text("playlist: " + pl.name);
+		var pt = asset.playlistsTracks;
+		var plNames = [];
+		for(var plid in pt) {
+			for(var tr of pt[plid]) {
+				if (tr.id==song.id) {
+					plNames.push(asset.playlists[plid].name);
+					break;
+				}
+			}
+		}
+		console.log({plNames});
+		if (plNames && plNames.length >= 1) {
+			$(".playlist", div).text("playlist: " + plNames.join(', '));
 		}
 		else
 			$(".playlist", div).text("playlist: ---");
@@ -100,22 +107,46 @@ function prova2() {
 
 	var lastPlayRandomAndSilence = 0;
 	async function playRandomAndSilence(n) {
+		if (now()-lastPlayRandomAndSilence < 5000)
+			return;
+		
+		getSelectedTracks();
+		if (!selectedTracks || selectedTracks.length==0)
+			return;
+		
 		if (!n)
 			n=1;
-		var t = now();
-		if (t-lastPlayRandomAndSilence < 5000)
-			return;
-		lastPlayRandomAndSilence = t;
+
+		scramble(selectedTracks);
+		var uris = [];
+		var cursor = Math.floor(Math.random()*selectedTracks.length);
 		for(var i=0; i<n; i++) {
-			var tr = selectedTracks[Math.floor(Math.random()*selectedTracks.length)];
-			await spotlib.addToQueue(tr.uri);
-			if (i==0)
-				await spotlib.playNext();
+			var tr = selectedTracks[(cursor+i)%selectedTracks.length];
+			uris.push(tr.uri);
 		}
-		await spotlib.addToQueue(silenceTrack.uri);
-		lastPlayRandomAndSilence = t;
-		asset.refreshStatus();
+		uris.push(silenceTrack.uri);
+
+		lastPlayRandomAndSilence = now();
+		await spotlib.playUri(uris, null, 0).then(asset.refreshStatus);
+		lastPlayRandomAndSilence = now();
 	}
+	// async function playRandomAndSilence(n) {
+	// 	if (!n)
+	// 		n=1;
+	// 	var t = now();
+	// 	if (t-lastPlayRandomAndSilence < 5000)
+	// 		return;
+	// 	lastPlayRandomAndSilence = t;
+	// 	for(var i=0; i<n; i++) {
+	// 		var tr = selectedTracks[Math.floor(Math.random()*selectedTracks.length)];
+	// 		await spotlib.addToQueue(tr.uri);
+	// 		if (i==0)
+	// 			await spotlib.playNext();
+	// 	}
+	// 	await spotlib.addToQueue(silenceTrack.uri);
+	// 	lastPlayRandomAndSilence = t;
+	// 	asset.refreshStatus();
+	// }
 
 	function initializePage() {
 		var d = $.Deferred();
@@ -140,6 +171,10 @@ function prova2() {
 				});
 				$('.b-prev').click(commands.gotoPrevious);
 				$('.b-backward').click(commands.backward);
+
+				$('.b-next').click(commands.gotoNext);
+				$('.b-forward').click(commands.forward);
+
 				$('.b-delete').click(commands.deleteThisSong);
 				$('.b-add').click(commands.addThisSong);
 				$('.b-pause').click(commands.pause);
@@ -264,8 +299,7 @@ function prova2() {
 				return;
 			}
 			asset.selectedPlayLists = arr;
-			getSelectedTracks();
-			await playRandomAndSilence();
+			await playRandomAndSilence(10);
 		}
 
 
@@ -363,9 +397,7 @@ function prova2() {
 						return;
 					var t = status.item.duration_ms * x / $('.play-progress').width();
 					console.log('seek ' + t);
-					spotlib.seek(t).then(function () {
-						asset.refreshStatus(100);
-					});
+					spotlib.seek(t).then(asset.refreshStatus);
 				}
 				catch (e) { }
 			});
@@ -427,7 +459,7 @@ function prova2() {
 		// next song
 		if (status.device) {
 			if (silence || fineBrano) {
-				playRandomAndSilence();
+				playRandomAndSilence(10);
 			}
 		}
 	};

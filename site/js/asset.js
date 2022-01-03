@@ -17,7 +17,6 @@ var asset = (function(){
 		playlists: null,
 		playlistsTracks:null,
 		localDbImage: null,
-		trackPlaylists: null,
 		tracks:{}	
 	};
 
@@ -64,7 +63,6 @@ var asset = (function(){
 		set playlists(p) {
 			data.playlists = clone(p);
 			cache.playlists = clone(p);
-			cache.trackPlaylists = null;
 			cache.localDbImage = null;
 			trigger('db-data-changed');
 		},
@@ -74,14 +72,12 @@ var asset = (function(){
 		set playlistsTracks(p) {
 			data.playlistsTracks = clone(p);
 			cache.playlistsTracks = clone(p);
-			cache.trackPlaylists = null;
 			cache.localDbImage = null;
 			trigger('db-data-changed');
 		},
 		setPlaylistsTrack: function(plId, p) {
 			data.playlistsTracks[plId] = clone(p);
 			cache.playlistsTracks[plId] = clone(p);
-			cache.trackPlaylists = null;
 			cache.localDbImage = null;
 		},
 		set blacklist(v) {
@@ -109,21 +105,6 @@ var asset = (function(){
 				};
 			}
 			return cache.localDbImage;
-		},
-		get trackPlaylists() {
-			if (!cache.trackPlaylists) {
-				console.log(`compute trackPlaylists()`);
-				cache.trackPlaylists = {};
-				for(var plId in data.playlistsTracks) {
-					for(var trackId in data.playlistsTracks[plId]) {
-						if (!cache.trackPlaylists[trackId])
-							cache.trackPlaylists[trackId] = [];
-
-						cache.trackPlaylists[trackId].push(plId);
-					}
-				}
-			}
-			return cache.trackPlaylists;
 		},
 		get selectedPlayLists() {
 			return clone(data.selectedPlayLists);
