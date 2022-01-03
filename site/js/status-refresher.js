@@ -3,34 +3,36 @@ function spotStatusRefresher(onStatusData){
 	var curTimeout, curTimeoutStart, curTimeoutEnd;
 
 
-	const now = () =>new Date().getTime();
 	
 	function onData(data) {
 		$('.statusled').hide();
 		curTimeout = null;
 		onStatusData(data);
 		refresh(PERIOD);
+		return data;
 	}
 
-	function onFail() {
+	function onFail(e) {
 		console.log('on fail');
 		$('.statusled').hide();
 		curTimeout = null;
 		console.log({getStatusError:arguments});
 		refresh(PERIOD);
+		return e;
 	}
 
-	function _doRefresf() {
+	function _doRefresh() {
 		log('get spot status');
 		$('.statusled').show();
 		nextPromise = spotlib.getStatus().then(onData, onFail);
+		return nextPromise;
 	}
 
 	function refresh(ms) {
 		log('spot status refresh '+ms);
 
 		if (!ms || ms<0)
-			return _doRefresf();
+			return _doRefresh();
 
 		var nextExpiration = now()+ms;
 		if (curTimeout && (nextExpiration>curTimeoutEnd)) {
@@ -46,7 +48,7 @@ function spotStatusRefresher(onStatusData){
 		var nextExpiration = now()+ms;
 		curTimeoutStart = now();
 		curTimeoutEnd = nextExpiration;
-		curTimeout = setTimeout(_doRefresf, ms);
+		curTimeout = setTimeout(_doRefresh, ms);
 		log("next trigger: "+curTimeoutEnd);
 	}
 

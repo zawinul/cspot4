@@ -1,3 +1,6 @@
+const clone = x=>$.extend(true, {}, {a:x}).a;
+const now = () =>new Date().getTime();
+
 
 (function rotellaTitolo() {
 	var provarot = ['|','/','-','\\'], provarotc=0;
@@ -50,9 +53,9 @@ function singleton(factory) {
 
 
 
-var getSilenceTracks = singleton(function () {
-	return Promise.all([silence1Id, silence2Id].map(spotlib.getTrackById))
-});
+// var getSilenceTracks = singleton(function () {
+// 	return Promise.all([silence1Id, silence2Id].map(asset.getTrack))
+// });
 
 function semplifica(obj, fields) {
 	if (!fields)

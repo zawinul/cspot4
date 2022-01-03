@@ -90,6 +90,16 @@ var spotlib = {
 		return callSpotify(url, null, opts);
 	}
 
+	
+	function addToQueue(songUri) {
+		var url = "https://api.spotify.com/v1/me/player/queue";
+		url += "?uri=" + escape(songUri);
+		var opts = {
+			method: 'post'
+		};
+		return callSpotify(url, null, opts);
+	}
+
 	function getProfile() {
 		console.log('getProfile');
 		return callSpotify("https://api.spotify.com/v1/me").then(function (x) {
@@ -377,18 +387,13 @@ var spotlib = {
 		return null;
 	}
 
-	async function getTrackById(id) {
-		var tr = asset.tracks[id];
-		if (asset.tracks[id])
-			return tr;
-
+	function getTrackById(id) {
 		var req = {
 			method: 'GET',
 			url:'https://api.spotify.com/v1/tracks/'+id
 		};
 
-		//asset.tracks[id] = tr = await sendReq(req);
-		return tr;
+		return sendReq(req);
 	}
 
 	// function getTrackById(id) {
@@ -505,7 +510,7 @@ var spotlib = {
 		// abbiamo un token valido in memoria?
 		var d = getToken.d;
 		if (d) {
-			if (getToken.expire && (new Date().getTime()<getToken.expire))
+			if (getToken.expire && (new Date().getTime()+60000<getToken.expire))
 				return d;
 		}
 
@@ -535,7 +540,7 @@ var spotlib = {
 			}, false);
 			getToken.listenerAdded = true;
 		}
-		window.open('./auth/index.html?__START__=1&x='+Math.random());
+		window.open('../auth/index.html?__START__=1');
 		return d;
 	}
 
@@ -580,6 +585,7 @@ var spotlib = {
 		getProfile: getProfile,
 		deleteFromPlaylist: deleteFromPlaylist,
 		addToPlaylist: addToPlaylist,
+		addToQueue: addToQueue,
 		getPlaylists: getPlaylists,
 		getPlaylistIds: getPlaylistIds,
 		getFeaturedPlaylists: getFeaturedPlaylists,

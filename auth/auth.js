@@ -48,4 +48,3 @@ function receive() {
 	setTimeout(function() {window.close();}, 100);
 
 }
-$(init);

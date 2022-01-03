@@ -61,25 +61,6 @@
 }
 
 
-.sel-pl {
-	width:100%;
-	display: block;
-	&>div{
-		width:100%;
-		text-align: center;
-		button {
-			//background-color: rgba(0, 128, 0, 0.2);
-			//border: 2px solid white;
-			//color: white;
-			padding: 18px;
-			margin: 5px ;
-			font-size: 20px;
-			width: 90%;
-		}
-	}
-
-}
-
 
 .play-progress {
     position:absolute;
@@ -145,6 +126,8 @@
 		color: black;
 	}
 }
+
+
 .select-playlist-div {    
     position: absolute;
     left:0;
@@ -152,37 +135,73 @@
     z-index:9999;
     width:100%;
     height: 100%;
-    background-color: rgba(255,255,255,.9);
+    background-color: rgba(255,255,255,.97);
 	width:98%;
+
+	text-align: center;
+
+	.all-none {
+		text-align: right;
+		font-family: arial;
+		font-size:12px;
+		a {
+			margin-right:12px;
+		}
+	}
+	.pl-buttons {
+		overflow:hidden;
+
+		button {
+			//background-color: rgba(0, 128, 0, 0.2);
+			//border: 2px solid white;
+			//color: white;
+			padding: 18px;
+			margin: 0 5%;
+			font-size: 20px;
+			width: 35%;
+			float: left;
+		}
+	}
+
+
+	.pl-container {
+		padding: 24px 24px 48px 24px;
+		width: 100%;
+		box-sizing: border-box;
+		overflow: hidden;
+	
+		.item { 
+			padding:3px; 
+			float: left;
+			border: 1px solid gray;
+			margin:2px;
+			font-size:15px;
+			color:rgb(0,32,0);
+			background-color: rgba(190, 190, 190,.7);
+			overflow: hidden;
+			height: 16px;
+
+			&.selected { 
+				border: 1px solid black;
+				background-color: rgba(255,255,230,.7);
+				color:rgb(192,0,0);
+				font-weight: bold;
+			}
+			
+		}
+	}
 }
 
-.select-playlist-div .item { 
-    padding:3px; 
-    float: left;
-    border: 1px solid gray;
-    margin:2px;
-    font-size:15px;
-    color:rgb(0,32,0);
-    background-color: rgba(190, 190, 190,.7);
-    overflow: hidden;
-    height: 16px;
-}
 
-.select-playlist-div .item.selected { 
-    border: 1px solid black;
-    background-color: rgba(255,255,230,.7);
-	color:rgb(192,0,0);
-	font-weight: bold;
-}
 
-.select-playlist-div .button {
-    border: 3px double black;
-    clear: both;
-    font-size: 24px;
-    background-color: rgba(100,100,100,.9);
-    width: 96%;
-    text-align: center;
-}
+// .select-playlist-div .button {
+//     border: 3px double black;
+//     clear: both;
+//     font-size: 24px;
+//     background-color: rgba(100,100,100,.9);
+//     width: 96%;
+//     text-align: center;
+// }
 
 .show-status {
 	background-color: rgba(255,255,0,.35);
@@ -192,6 +211,17 @@
 	font-size: 18px;
 	height:30px;
 	vertical-align: middle;
+}
+
+.statusled {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: red;
+    background-color: rgba(255,255,255,.75);
+    padding: 4px;
+    border-radius: 6px;
+    font-size: 8px;
 }
 
 .hidden {

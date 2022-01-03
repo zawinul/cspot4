@@ -7,11 +7,11 @@ var resetNeeded = false;
 var silenceTrackId = '1nKY2o8XQG1RvUCpBV5VSK';
 
 var silenceTrack;
-var scaletta = null, _cursor = -1;
-const SCALETTA_LENGTH = 100;
 var timerPeriod = 5000;
 var curTrack;
-var playingMyList = false;
+
+var songTimeStart, songLength, songPlaying=false;
+var selectedTracks = [];
 
 function prova2() {
 
@@ -32,11 +32,12 @@ function prova2() {
 			loadCss();
 			//await initializeLists();
 
-			updateAssetFromDB();
+			await updateAssetFromDB();
 			await initializePage();
 			//timerFun();
 
-			await getSilenceTrack();
+			silenceTrack = await asset.getTrack(silenceTrackId);
+
 
 			//	spotStatus.addListener(onStatus);
 			asset.on('play-status', onStatus);
@@ -51,10 +52,10 @@ function prova2() {
 				if (asset.curItem) 
 					msg(asset.curItem.name).css({ backgroundColor: 'white' });
 			});
+			asset.refreshStatus();
 			updateSong();
-			msg('initialize done');
+			msg('version "'+CSPOT4_VERSION+'" initialized!');
 			prova2Initialized.resolve();
-
 		}catch(e) {
 			debugger;
 			console.log({initError: e});
@@ -67,24 +68,8 @@ function prova2() {
 			console.log('waiting for status');
 			return setTimeout(updateSong, 1000);
 		}
-		if (playingMyList) {
-			var found = false;
-			msg('search ' + song.id);
-			for (var i = 0; i < scaletta.length; i++) {
-				let x = scaletta[i];
-				if (x == song.id) {
-					_cursor = i;
-					msg('' + i).css({ fontSize: 24, textAlignment: 'center', fontWeight: 'bold' });
-					found = true;
-					break;
-				}
-			}
-			if (!found)
-				msg('synch not found');
-		}
 		showSong(song);
 	}
-	window.updateSong = updateSong;
 	
 	function showSong(song) {
 
@@ -104,17 +89,43 @@ function prova2() {
 			$(".playlist", div).text("playlist: ---");
 	}
 
-	function getSilenceTrack() {
-		var p = spotlib.getTrackById(silenceTrackId);
-		return p.then(s => silenceTrack = s);
+	function getSelectedTracks() {
+		var arr = asset.selectedPlayLists;
+		selectedTracks = [];
+		var pt = asset.playlistsTracks;
+		for(plid of arr) 
+			for(tr of pt[plid])	
+				selectedTracks.push(tr);
 	}
 
+	var lastPlayRandomAndSilence = 0;
+	async function playRandomAndSilence(n) {
+		if (!n)
+			n=1;
+		var t = now();
+		if (t-lastPlayRandomAndSilence < 5000)
+			return;
+		lastPlayRandomAndSilence = t;
+		for(var i=0; i<n; i++) {
+			var tr = selectedTracks[Math.floor(Math.random()*selectedTracks.length)];
+			await spotlib.addToQueue(tr.uri);
+			if (i==0)
+				await spotlib.playNext();
+		}
+		await spotlib.addToQueue(silenceTrack.uri);
+		lastPlayRandomAndSilence = t;
+		asset.refreshStatus();
+	}
 
 	function initializePage() {
 		var d = $.Deferred();
 		div = $('<div/>').addClass('prova2-container');
 		$('.prova2').hide();
-		div.load('prova2.html', {}, onLoad);
+		//div.load('prova2.html', {}, onLoad);
+		$.get('prova2.html').then(function(txt){
+			div.html(txt);
+			onLoad();
+		});
 		function onLoad() {
 			function onResize() {
 				$('.play-progress').css({ top: $(window).height() - 30 });
@@ -125,18 +136,16 @@ function prova2() {
 			});
 			setTimeout(function () {
 				$('.info-container', div).click(function () {
-					//debugger;
-					if (playingMyList)
-						spotlib.playNext();
-					else
-						commands.startAt(0, 0);
+					spotlib.playNext().then(asset.refreshStatus);
 				});
 				$('.b-prev').click(commands.gotoPrevious);
+				$('.b-backward').click(commands.backward);
 				$('.b-delete').click(commands.deleteThisSong);
 				$('.b-add').click(commands.addThisSong);
 				$('.b-pause').click(commands.pause);
 				$('.b-resume').click(commands.resume);
 				$('.b-album').click(commands.album);
+				$('.b-random').click(commands.random);
 				//$('.b-p100').click(commands.doP100);
 				$('.b-loop').click(loopSong);
 				$('.b-thumb-up').hide();
@@ -154,10 +163,7 @@ function prova2() {
 	commands = (function () {
 
 		function gotoNext() {
-			if (playingMyList)
-				spotlib.playNext();
-			else
-				commands.startAt(0, 0);
+			spotlib.playNext().then(asset.refreshStatus);
 		}
 
 		function gotoPrevious() {
@@ -170,92 +176,96 @@ function prova2() {
 			asset.refreshStatus();
 		}
 
+		function backward() {
+			if (songPlaying) {
+				var pos = now()-songTimeStart;
+				var ms = pos>5000 ? pos-5000 : 0;
+				spotlib.seek(ms).then(asset.refreshStatus);
+			}
+		}
+
+		
+		function forward() {
+			if (songPlaying) {
+				var pos = now()-songTimeStart;
+				var limit = songLength -1000;
+				var ms = pos+5000 <  limit ? pos+5000 : limit;
+				spotlib.seek(ms).then(asset.refreshStatus);
+			}
+		}
 
 		function pause() {
 			spotlib.pause();
 		}
 
-		function startAt(cur, time) {
-			_cursor = (cur >= 0) ? cur : 0;
-			time = time || 0;
-			msg('start@' + _cursor + ':' + time).css({ color: 'yellow', backgroundColor: 'black' });
-
-			var arr = [];
-			for (var i = 0; i < SCALETTA_LENGTH; i++)
-				arr.push(scaletta[(_cursor + i) % scaletta.length]);
-			arr.push(silenceTrackId);
-
-			//msg('getting tracks');
-
-			// Rx.Observable.from(arr)
-			// 	.map(spotlib.getTrackById)
-			// 	.map(x => Rx.Observable.fromPromise(x))
-			// 	.mergeAll()
-			// 	.map(x => x.uri)
-			// 	//.map(x => {msg(x); return x})
-			// 	.toArray()
-			// 	.subscribe(arr => {
-			// 		msg("play at" + _cursor + ' N=' + arr.length).css({ backgroundColor: '#c0ffc0' });
-			// 		console.log({ arr: arr });
-			// 		spotlib.playUri(arr, null, time).done(function () { msg('fatto'); });
-			// 		playingMyList = true;
-			// 	});
-		}
 
 		function album() {
-			var status;
-			var restart_ms;
-			var restart_cur;
-			function onAlbum(album) {
-				var thisSongUri = status.item.uri;
-				var insertPoint = _cursor + 1;
-				var ids = album.tracks.items.map(x => x.id);
-				spotlib.getTracksById(ids).done(result => {
-					if (result.tracks.length <= 1) {
-						msg("nothing to do");
-						return;
-					}
+			// var status;
+			// var restart_ms;
+			// var restart_cur;
+			// function onAlbum(album) {
+			// 	var thisSongUri = status.item.uri;
+			// 	var insertPoint = _cursor + 1;
+			// 	var ids = album.tracks.items.map(x => x.id);
+			// 	spotlib.getTracksById(ids).done(result => {
+			// 		if (result.tracks.length <= 1) {
+			// 			msg("nothing to do");
+			// 			return;
+			// 		}
 
-					var position = -1;
-					for (var i = 0; i < result.tracks.length; i++)
-						if (result.tracks[i].uri == thisSongUri)
-							position = i;
+			// 		var position = -1;
+			// 		for (var i = 0; i < result.tracks.length; i++)
+			// 			if (result.tracks[i].uri == thisSongUri)
+			// 				position = i;
 
-					if (position >= 0) {
-						msg('track at pos ' + i);
-						for (var i = 1; i < result.tracks.length; i++) {
-							var tp = (i + position) % result.tracks.length;
-							var tr = result.tracks[tp];
-							scaletta.splice(insertPoint, 0, tr.id);
-							msg(insertPoint + '<-' + tp + ' ' + tr.name);
-							console.log(insertPoint + '<-' + tp + ' ' + tr.name);
-							insertPoint++;
-						}
-					}
-					else {
-						msg('traccia non trovata nell\'album');
-						for (var i = 0; i < result.tracks.length; i++) {
-							var tr = result.tracks[i];
-							if (tr.uri == thisSongUri)
-								continue;
-							scaletta.splice(insertPoint, 0, tr.id);
-							console.log('aggiunto in posizione ' + insertPoint + ': ' + tr.name);
-							msg(insertPoint + '<-' + i + ' ' + tr.name);
-							insertPoint++;
-						}
-					}
-					commands.startAt(restart_cur, restart_ms);
-					msg("CURSOR=" + _cursor + " INSERT" + insertPoint);
-				});
+			// 		if (position >= 0) {
+			// 			msg('track at pos ' + i);
+			// 			for (var i = 1; i < result.tracks.length; i++) {
+			// 				var tp = (i + position) % result.tracks.length;
+			// 				var tr = result.tracks[tp];
+			// 				scaletta.splice(insertPoint, 0, tr.id);
+			// 				msg(insertPoint + '<-' + tp + ' ' + tr.name);
+			// 				console.log(insertPoint + '<-' + tp + ' ' + tr.name);
+			// 				insertPoint++;
+			// 			}
+			// 		}
+			// 		else {
+			// 			msg('traccia non trovata nell\'album');
+			// 			for (var i = 0; i < result.tracks.length; i++) {
+			// 				var tr = result.tracks[i];
+			// 				if (tr.uri == thisSongUri)
+			// 					continue;
+			// 				scaletta.splice(insertPoint, 0, tr.id);
+			// 				console.log('aggiunto in posizione ' + insertPoint + ': ' + tr.name);
+			// 				msg(insertPoint + '<-' + i + ' ' + tr.name);
+			// 				insertPoint++;
+			// 			}
+			// 		}
+			// 		//commands.startAt(restart_cur, restart_ms);
+			// 		msg("CURSOR=" + _cursor + " INSERT" + insertPoint);
+			// 	});
+			// }
+			// spotlib.getStatus().done(s => {
+			// 	status = s;
+			// 	if (_cursor >= 0) {
+			// 		restart_cur = _cursor;
+			// 		restart_ms = s.progress_ms;
+			// 	}
+			// 	spotlib.getAlbum(status.item.album.id).done(onAlbum);
+			// });
+		}
+
+		async function random() {
+			let { arr, ok} = await choosePlaylists();
+			if (!ok)
+				return;
+			if (arr.length==0) {
+				alert('non hai selezionato neanche una playlist');
+				return;
 			}
-			spotlib.getStatus().done(s => {
-				status = s;
-				if (_cursor >= 0) {
-					restart_cur = _cursor;
-					restart_ms = s.progress_ms;
-				}
-				spotlib.getAlbum(status.item.album.id).done(onAlbum);
-			});
+			asset.selectedPlayLists = arr;
+			getSelectedTracks();
+			await playRandomAndSilence();
 		}
 
 
@@ -362,16 +372,18 @@ function prova2() {
 		}
 
 		return {
-			gotoNext: gotoNext,
-			gotoPrevious: gotoPrevious,
-			pause: pause,
-			album: album,
+			gotoNext,
+			gotoPrevious,
+			pause,
+			album,
+			random,
 			//doP100: doP100,
-			resume: resume,
-			deleteThisSong: deleteThisSong,
-			addThisSong: addThisSong,
-			playProgressClick: playProgressClick,
-			startAt: startAt
+			resume,
+			deleteThisSong,
+			addThisSong,
+			playProgressClick,
+			backward,
+			forward
 		}
 	})();
 
@@ -390,10 +402,15 @@ function prova2() {
 		var id = status.item.id;
 
 		onStatus.lastSong = status.item.id;
-		var play = status.is_playing;
+		var play = songPlaying = status.is_playing;
 		var active = (status.device) ? status.device.is_active : false;
 		var dev = status.device.name;
 		var p = status.timestamp - status.progress_ms;
+
+		if (songPlaying) {
+			songTimeStart = now()-status.progress_ms;
+			songLength = status.item.duration_ms;
+		}
 
 		$('.buttons .b-resume').toggleClass('hidden', play);
 		$('.buttons .b-pause').toggleClass('hidden', !play);
@@ -410,8 +427,7 @@ function prova2() {
 		// next song
 		if (status.device) {
 			if (silence || fineBrano) {
-				playingMyList = false;
-				commands.gotoNext();
+				playRandomAndSilence();
 			}
 		}
 	};
@@ -419,6 +435,20 @@ function prova2() {
 	function loadCss() {
 		$('<link>').appendTo('head').attr({ type: 'text/css', rel: 'stylesheet', href: 'css/prova2.css' });
 	}
+
+	function updateProgress() {
+		var txt = '';
+		if (songPlaying) {
+			var pos = now()-songTimeStart;
+			var txt1 = moment.utc(pos).format("mm:ss");
+			var r = pos/songLength;
+			r = r>1 ? 1 : (r<0 ? 0 : r);
+			var txt2 = (r*100).toFixed(1) + '%';
+			txt = txt1+' - '+txt2;
+		}
+		$('.play-progress .bmiddle').text(txt);
+	}
+	setInterval(updateProgress, 100);
 
 	function barra(status) {
 		var play = status.is_playing;
@@ -429,12 +459,11 @@ function prova2() {
 		$('.barra-w, .barra-b', b).width(b.width());
 		$('.bleft', b).text(
 			(play ? 'P' : '!P') + ' '
-			+ (active ? 'A' : '!A') + ' '
-			+ (playingMyList ? 'L:' + _cursor : '')
+			+ (active ? 'A' : '!A')
 		);
-		$('.bmiddle', b).text(moment.utc(status.progress_ms).format("mm:ss")
-			+ ' ' + Math.floor(status.progress_ms / (songlen + 1) * 10000) / 100 + '%'
-		);
+		// $('.bmiddle', b).text(moment.utc(status.progress_ms).format("mm:ss")
+		// 	+ ' ' + Math.floor(status.progress_ms / (songlen + 1) * 10000) / 100 + '%'
+		// );
 
 		$('.bright', b).text(moment.utc(songlen).format("mm:ss"));
 
@@ -462,44 +491,45 @@ function prova2() {
 	}
 
 
-	var loopSong = function () {
-		var state = a;
-		var msStart, msEnd, songStart, timeout;
+	var loopState = 0, loopStart, loopEnd, loopTimeout = -1;;
+
+	function loopSong() {
+		if (loopState==0) {
+			loopStart = now()-songTimeStart;
+			loopState = 1;
+			$('.button.b-loop').attr('data-state', 'b');
+		}
+		else if (loopState==1) {
+			loopEnd = now()-songTimeStart;
+			spotlib.seek(loopStart).then(asset.refreshStatus);
+			loopTimeout = setTimeout(t, loopEnd - loopStart);
+			loopState = 2;
+			$('.button.b-loop').attr('data-state', 'c');
+		}
+		else if (loopState==2) {
+			if (loopTimeout>=0)
+				clearTimeout(loopTimeout);
+			loopTimeout = -1;
+			loopState = 0;
+			$('.button.b-loop').attr('data-state', 'a');
+
+		}
 
 		function a() {
-			msStart = (new Date()).getTime();
-			songStart = spotlib.getStatus().then(status => status.progress_ms);
+			loopStart = now()-songStart;
 			state = b;
 			$('.b-loop').attr('data-state', 'b');
 		}
 
-		function b() {
-			msEnd = (new Date()).getTime();
-			songStart.then(ms => spotlib.seek(ms));
-			timeout = setTimeout(t, msEnd - msStart);
-			state = c;
-			$('.b-loop').attr('data-state', 'c');
-		}
-
-		function c() {
-			state = a;
-			$('.b-loop').attr('data-state', 'a');
-		}
-
 		function t() {
-			if (state === c) {
-				songStart.then(ms => spotlib.seek(ms));
-				timeout = setTimeout(t, msEnd - msStart);
+			if (loopState == 2) {
+				spotlib.seek(loopStart).then(asset.refreshStatus);
+				loopTimeout = setTimeout(t, loopEnd - loopStart);
 			}
 			else
-				timeout = null;
+				loopTimeout = -1;
 		}
-
-		return function () {
-			state.apply(this, arguments);
-		}
-	}();
-	window.loopSong = loopSong;
+	};
 
 	initialize();
 }

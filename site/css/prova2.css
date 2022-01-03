@@ -48,20 +48,6 @@
 .buttons .button[data-state="c"] {
   background-color: rgba(128, 0, 0, 0.85);
 }
-.sel-pl {
-  width: 100%;
-  display: block;
-}
-.sel-pl > div {
-  width: 100%;
-  text-align: center;
-}
-.sel-pl > div button {
-  padding: 18px;
-  margin: 5px ;
-  font-size: 20px;
-  width: 90%;
-}
 .play-progress {
   position: absolute;
   left: 0;
@@ -131,10 +117,35 @@
   z-index: 9999;
   width: 100%;
   height: 100%;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.97);
   width: 98%;
+  text-align: center;
 }
-.select-playlist-div .item {
+.select-playlist-div .all-none {
+  text-align: right;
+  font-family: arial;
+  font-size: 12px;
+}
+.select-playlist-div .all-none a {
+  margin-right: 12px;
+}
+.select-playlist-div .pl-buttons {
+  overflow: hidden;
+}
+.select-playlist-div .pl-buttons button {
+  padding: 18px;
+  margin: 0 5%;
+  font-size: 20px;
+  width: 35%;
+  float: left;
+}
+.select-playlist-div .pl-container {
+  padding: 24px 24px 48px 24px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.select-playlist-div .pl-container .item {
   padding: 3px;
   float: left;
   border: 1px solid gray;
@@ -145,19 +156,11 @@
   overflow: hidden;
   height: 16px;
 }
-.select-playlist-div .item.selected {
+.select-playlist-div .pl-container .item.selected {
   border: 1px solid black;
   background-color: rgba(255, 255, 230, 0.7);
   color: #c00000;
   font-weight: bold;
-}
-.select-playlist-div .button {
-  border: 3px double black;
-  clear: both;
-  font-size: 24px;
-  background-color: rgba(100, 100, 100, 0.9);
-  width: 96%;
-  text-align: center;
 }
 .show-status {
   background-color: rgba(255, 255, 0, 0.35);
@@ -167,6 +170,16 @@
   font-size: 18px;
   height: 30px;
   vertical-align: middle;
+}
+.statusled {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: red;
+  background-color: rgba(255, 255, 255, 0.75);
+  padding: 4px;
+  border-radius: 6px;
+  font-size: 8px;
 }
 .hidden {
   display: none;

@@ -1,0 +1,1 @@
+var CSPOT4_VERSION = "3 gen 2022";
