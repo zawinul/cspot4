@@ -10,7 +10,8 @@ var asset = (function(){
 		updatedFromSpotify: false,
 		status: {},
 		curTrack: null,
-		profile: {}
+		profile: {},
+		scaletta:null,
 
 	}
 	var cache = {
@@ -79,11 +80,12 @@ var asset = (function(){
 			data.playlistsTracks[plId] = clone(p);
 			cache.playlistsTracks[plId] = clone(p);
 			cache.localDbImage = null;
+			trigger('db-data-changed');
 		},
 		set blacklist(v) {
 			data.blacklist = clone(v);
-			trigger('db-data-changed');
 			cache.localDbImage = null;
+			trigger('db-data-changed');
 		},
 		get blacklist() {
 			return clone(data.blacklist);
@@ -99,9 +101,10 @@ var asset = (function(){
 				console.log(`compute localDbImage`);
 				cache.localDbImage =  {
 					playlists: clone(data.playlists),
-					playlistsTracks: clone(done.playlistsTracks),
+					playlistsTracks: clone(data.playlistsTracks),
 					selectedPlayLists: clone(data.selectedPlayLists),
-					blacklist: clone(data.blacklist)
+					blacklist: clone(data.blacklist),
+					scaletta: clone(data.scaletta) 
 				};
 			}
 			return cache.localDbImage;
@@ -149,18 +152,21 @@ var asset = (function(){
 				cache.tracks[id] = await spotlib.getTrackById(id);
 			return cache.tracks[id];
 			
-		}
+		},
+		set scaletta(v) {
+			data.scaletta = clone(v);
+			cache.localDbImage = null;
+			trigger('db-data-changed');
+		},
+		get scaletta() {
+			return data.scaletta;
+		},
+
 	}
 })();
 
 asset.on('db-data-changed', function(value) {
-	var d = {
-		playlists: asset.playlists,
-		playlistsTracks: asset.playlistsTracks,
-		selectedPlayLists: asset.selectedPlayLists,
-		blacklist: asset.blacklist
-	}
-	db2.set(d);
+	db2.set(asset.localDbImage);
 	console.log('db-data-changed, db2 written');
 });
 
@@ -171,7 +177,14 @@ async function updatePlaylistFromSpotify(pl, shadow) {
 		var id = pl.id;
 		var arr = await spotlib.getPlaylistTracks(pl);
 		arr = arr.filter(x=> x && x.track);
-		arr = arr.map(x=>semplifica(x.track, "id,name,uri"));
+		arr = arr.map(x=>x.track).map(x=>({
+			id: x.id,
+			name:x.name,
+			uri:x.uri,
+			artist:x.artists.map(a=>a.name).join(','),
+			album:x.album.name
+		}));
+			
 
 		shadow.playlists[id] = {
 			name:pl.name,
@@ -198,6 +211,7 @@ async function updateAssetFromSpotify() {
 		playlists: clone(asset.playlists) || {},
 		playlistsTracks: clone(asset.playlistsTracks) || {}
 	}
+
 	var changed = false;
 	for (var sList of spotifyPlaylists) {
 		var aList = shadow.playlists[sList.id];
@@ -246,4 +260,12 @@ async function updateAssetFromDB() {
 		asset.selectedPlayLists = clone(d.selectedPlayLists);
 	if (d && d.blacklist) 
 		asset.blacklist = clone(d.blacklist);
+	if (d && d.scaletta) 
+		asset.scaletta = clone(d.scaletta);
+}
+
+function resetSpotifyData() {
+	asset.playlists = {};
+	asset.playlistsTracks = {};
+	updateAssetFromSpotify();
 }

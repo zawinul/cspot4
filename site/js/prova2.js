@@ -73,6 +73,11 @@ function prova2() {
 	
 	function showSong(song) {
 
+		if (asset.scaletta) {
+			var p = asset.scaletta.indexOf(song.id);
+			if (p>=0)
+				msg("position "+p).css({color:'#006600', backgroundColor:'#ffffff'});
+		}
 		$(".titolo", div).text(song.name);
 		$(".artist", div).text(song.artists[0].name);
 		$(".album", div).text("from: " + song.album.name);
@@ -120,13 +125,17 @@ function prova2() {
 		scramble(selectedTracks);
 		var uris = [];
 		var cursor = Math.floor(Math.random()*selectedTracks.length);
+		var scaletta=[];
 		for(var i=0; i<n; i++) {
 			var tr = selectedTracks[(cursor+i)%selectedTracks.length];
 			uris.push(tr.uri);
+			scaletta.push(tr.id);
 		}
 		uris.push(silenceTrack.uri);
 
 		lastPlayRandomAndSilence = now();
+		asset.scaletta=scaletta;
+		await spotlib.setShuffle(false);
 		await spotlib.playUri(uris, null, 0).then(asset.refreshStatus);
 		lastPlayRandomAndSilence = now();
 	}
