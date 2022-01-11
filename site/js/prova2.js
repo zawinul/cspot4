@@ -54,7 +54,7 @@ function prova2() {
 			});
 			asset.refreshStatus();
 			updateSong();
-			msg('version "'+CSPOT4_VERSION+'" initialized!');
+			msg('version "'+CSPOT4_VERSION+'"').css({color:'#004400', backgroundColor:'#ffffff', fontSize:20});
 			prova2Initialized.resolve();
 		}catch(e) {
 			debugger;
@@ -76,7 +76,7 @@ function prova2() {
 		if (asset.scaletta) {
 			var p = asset.scaletta.indexOf(song.id);
 			if (p>=0)
-				msg("position "+p).css({color:'#006600', backgroundColor:'#ffffff'});
+				msg("@"+p).css({color:'#004400', backgroundColor:'#ffffff', fontSize:20});
 		}
 		$(".titolo", div).text(song.name);
 		$(".artist", div).text(song.artists[0].name);
@@ -137,6 +137,7 @@ function prova2() {
 		asset.scaletta=scaletta;
 		await spotlib.setShuffle(false);
 		await spotlib.playUri(uris, null, 0).then(asset.refreshStatus);
+		pwait(500).then(asset.refreshStatus);
 		lastPlayRandomAndSilence = now();
 	}
 	// async function playRandomAndSilence(n) {

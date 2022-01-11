@@ -514,12 +514,14 @@ var spotlib = {
 	}
 
 	function getToken() {
-
-		// abbiamo un token valido in memoria?
+		//console.log('getToken');
+		// abbiamo una promessa di token valido in memoria?
 		var d = getToken.d;
 		if (d) {
-			if (getToken.expire && (new Date().getTime()+60000<getToken.expire))
+			if (getToken.expire && (new Date().getTime()+60000<getToken.expire)) {
+				//console.log('promessa di token già presente');
 				return d;
+			}
 		}
 
 		// abbiamo un token valido in localStorage ?
@@ -528,18 +530,21 @@ var spotlib = {
 		if (x && y && ((y-0)>new Date().getTime())) {
 			getToken.expire = y;
 			getToken.d = new $.Deferred().resolve(x);
+			//console.log('token già presente');
 			return getToken.d;
 		}
 
 		// generazione nuovo token
 		d = getToken.d = $.Deferred();
+		getToken.expire = new Date().getTime()+3600*1000;
+		console.log('creata promessa di token');
 
 		if (!getToken.listenerAdded) {
 			window.addEventListener("message", function (event){
-				//console.log({event:event});
+				console.log(JSON.stringify({messageArrived:{event:event}},null,2));
 				try {
 					var msg = JSON.parse(atob(event.data));
-					console.log({msg:msg});
+					console.log(JSON.stringify({msg:msg},null,2));
 					localStorage.cspot4Token = msg.token;
 					getToken.expire = new Date().getTime()+3600*1000;
 					localStorage.cspot4TokenExpire = ""+getToken.expire;

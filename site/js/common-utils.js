@@ -71,4 +71,8 @@ function semplifica(obj, fields) {
 }
 
 
-
+function pwait(ms) {
+	return new Promise(function(resolve){
+		setTimeout(resolve, ms);
+	});
+}
