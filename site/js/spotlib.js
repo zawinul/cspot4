@@ -185,6 +185,14 @@ var spotlib = {
 		return d;
 	}
 
+	
+	function setShuffle(s) {
+		var u = 'https://api.spotify.com/v1/me/player/shuffle'
+		if(typeof(s)!='undefined')
+			u += '?state='+(!!arguments[0]);
+		return callSpotify(u, null, {method:'put'});
+	}
+
 	function getCategories() {
 		var opt = {
 			limit: 50,
@@ -610,7 +618,8 @@ var spotlib = {
 		playPrevious: playPrevious,
 		pause:pause,
 		resume:resume,
-		seek:seek
+		seek:seek,
+		setShuffle:setShuffle
 	});
 
 
