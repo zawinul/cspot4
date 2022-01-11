@@ -1,3 +1,26 @@
+var oldTimeout = setTimeout;
+var oldClearTimeout = clearTimeout;
+var timeouts = {}
+
+window.setTimeout = function (callback, timeout, label) {
+	if (!label)
+		label = '?';
+	//console.log("timeout started");
+	var exp = now()+timeout;
+	var r =  oldTimeout(function () {
+		//console.log('timeout finished');
+		delete timeouts[r];
+		callback();
+	}, timeout);
+	timeouts[r]={label, exp};
+	return r;
+}
+
+window.clearTimeout = function (t){
+	oldClearTimeout(t);
+	delete timeouts[t];
+}
+
 function spotStatusRefresher(onStatusData){
 	const PERIOD = 5000;
 	var curTimeout, curTimeoutStart, curTimeoutEnd;
@@ -9,7 +32,6 @@ function spotStatusRefresher(onStatusData){
 		curTimeout = null;
 		onStatusData(data);
 		refresh(PERIOD);
-		return data;
 	}
 
 	function onFail(e) {
@@ -18,23 +40,28 @@ function spotStatusRefresher(onStatusData){
 		curTimeout = null;
 		console.log({getStatusError:arguments});
 		refresh(PERIOD);
-		return e;
 	}
 
 	function _doRefresh() {
-		log('get spot status');
+		//log('get spot status');
 		$('.statusled').show();
-		nextPromise = spotlib.getStatus().then(onData, onFail);
-		return nextPromise;
+		spotlib.getStatus().then(onData, onFail);
 	}
 
 	function refresh(ms) {
 		log('spot status refresh '+ms);
+		var t = now;
 
-		if (!ms || ms<0)
+
+		if (!ms || ms<0) { // immediate
+			if (curTimeout) {
+				clearTimeout(curTimeout);
+				curTimeout = null;
+			}	
 			return _doRefresh();
+		}
 
-		var nextExpiration = now()+ms;
+		var nextExpiration = t+ms;
 		if (curTimeout && (nextExpiration>curTimeoutEnd)) {
 			log("è gia pianificato un trigger prima di quanto richiesto: non faccio niente");
 			return;
@@ -45,11 +72,10 @@ function spotStatusRefresher(onStatusData){
 			curTimeout = null;
 		}
 
-		var nextExpiration = now()+ms;
-		curTimeoutStart = now();
-		curTimeoutEnd = nextExpiration;
-		curTimeout = setTimeout(_doRefresh, ms);
-		log("next trigger: "+curTimeoutEnd);
+		curTimeoutStart = t;
+		curTimeoutEnd = curTimeoutStart+ms;
+		curTimeout = setTimeout(_doRefresh, ms, 'st refresh');
+		//log("next trigger: "+curTimeoutEnd);
 	}
 
 

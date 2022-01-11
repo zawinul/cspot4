@@ -26,11 +26,11 @@
 		function cancella() {
 			m.remove();
 		}
-		var t = setTimeout(chiudi,time);
+		var t = setTimeout(chiudi,time, 'msg 1');
 		m.delay = function(tt) {
 			tt = tt || time;
 			clearTimeout(t);
-			t = setTimeout(chiudi,tt);
+			t = setTimeout(chiudi,tt, 'msg 2');
 		};
 		container().done(function(c) { m.appendTo(c);});
 		return m;

@@ -82,7 +82,7 @@ var asset = (function(){
 		},
 		set blacklist(v) {
 			data.blacklist = clone(v);
-			trigger('blacklist-changed');
+			trigger('db-data-changed');
 			cache.localDbImage = null;
 		},
 		get blacklist() {
@@ -166,12 +166,28 @@ asset.on('db-data-changed', function(value) {
 
 
 async function updatePlaylistFromSpotify(pl, shadow) {
-	msg('upd '+pl.name);
-	var id = pl.id;
-	var arr = await spotlib.getPlaylistTracks(pl);
-	arr = arr.map(x=>semplifica(x.track, "id,name,uri"));
-	shadow.playlists[id] = pl;
-	shadow.playlistsTracks[id] = arr;
+	try {
+		msg('upd '+pl.name);
+		var id = pl.id;
+		var arr = await spotlib.getPlaylistTracks(pl);
+		arr = arr.filter(x=> x && x.track);
+		arr = arr.map(x=>semplifica(x.track, "id,name,uri"));
+
+		shadow.playlists[id] = {
+			name:pl.name,
+			id:pl.id,
+			owner: { id:pl.owner.id},
+			uri:pl.uri,
+			href: pl.href,
+			collaborative:pl.collaborative,
+			snapshot_id:pl.snapshot_id
+
+		};
+		shadow.playlistsTracks[id] = arr;
+	}catch(e) {
+		debugger;
+		console.log(e);
+	}
 }
 
 async function updateAssetFromSpotify() {
@@ -186,7 +202,7 @@ async function updateAssetFromSpotify() {
 	for (var sList of spotifyPlaylists) {
 		var aList = shadow.playlists[sList.id];
 		if (!aList || (aList.snapshot_id!=sList.snapshot_id)) {
-			if (aList)
+			if (aList) 
 				msg('OLD '+aList.name+'\n'+aList.snapshot_id);
 			else
 				msg('OLD'+sList.name+' non presente');
@@ -231,15 +247,3 @@ async function updateAssetFromDB() {
 	if (d && d.blacklist) 
 		asset.blacklist = clone(d.blacklist);
 }
-
-var blacklistMap = {};
-function computeBlacklistMap() {
-	console.log('compute blacklist map');
-	blacklistMap = {};
-	for(var t of asset.blacklist)
-	blacklistMap[t] = true;
-	return blacklistMap;
-}
-
-//findAssetDbData();
-

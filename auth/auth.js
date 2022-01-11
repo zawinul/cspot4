@@ -45,6 +45,6 @@ function receive() {
 		var msg = { cmd:'onToken', token:pars.access_token, url:location.href };
 		window.opener.postMessage(btoa(JSON.stringify(msg)), "*");
 	}
-	setTimeout(function() {window.close();}, 100);
+	setTimeout(function() {window.close();}, 100, 'win close');
 
 }

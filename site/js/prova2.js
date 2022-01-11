@@ -44,7 +44,7 @@ function prova2() {
 			setTimeout(function(){
 				console.log('calling updatePlaylistFromSpotify');
 				updateAssetFromSpotify();
-			}, 5000);
+			}, 2500, "upd spotify");
 
 
 			asset.on('track-changed', updateSong);
@@ -66,7 +66,7 @@ function prova2() {
 		var song = asset.curItem;
 		if (!song) {
 			console.log('waiting for status');
-			return setTimeout(updateSong, 1000);
+			return setTimeout(updateSong, 1000, 'upd song');
 		}
 		showSong(song);
 	}
@@ -189,7 +189,7 @@ function prova2() {
 				onResize();
 				$(window).resize(onResize);
 				d.resolve();
-			}, 100);
+			}, 100, 'load');
 			div.appendTo('.main-container');
 		}
 		return d;
@@ -310,60 +310,32 @@ function prova2() {
 		}
 
 		async function deleteThisSong() {
-			var tr, trId;
-			var status = await spotlib.getStatus();
-			tr = status.item;
-			trId = tr.id;
+			var track = clone(asset.curItem);
+			spotlib.playNext().then(asset.refreshStatus);
+			var ret = await deleteTrack(track.id);
+			if (!ret.ok)
+				return;
 
-			commands.gotoNext();
-
-			var plists = asset.trackPlaylists[trId];
-			var delPromises = plists.map(pl => delFrom(pl));
-			await  $.when.apply($, delPromises);
-			msg('DONE');
-			commands.gotoNext();
-			var nDeleted=0;
-			var nFound=0;
-			function delFrom(pl) {
-				console.log('DELETE FROM ')
-				console.log({ deleteFrom: { pl: pl, tr: tr } });
-				var ret = $.Deferred();
-				if (me.id != pl.owner.id)
-					return insertInBlacklist(pl, tr);
-				nFound++;
-				var question = 'cancella ' + tr.name.toUpperCase() + ' da ' + pl.name.toUpperCase() + ' ?';
-				popup.confirm(question).then(reply => {
-					if (!reply) {
-						ret.resolve();
+			for(var pl of ret.arr) {
+				if (pl=='blacklist') {
+					var p = clone(asset.blacklist);
+					if (!p.includes(track.id)) { 
+						p.push(track.id);
+						asset.blacklist = p;
+						msg('inserted in blacklist');
 					}
-					else {
-						spotlib.deleteFromPlaylist(pl.id, tr.uri)
-							.done(function (result) {
-								console.log({ result: result });
-								msg('>> del OK');
-								nDeleted++;
-
-							})
-							.always(() => ret.resolve());
-					}
-				})
-				return ret;
-			}
-
-			function insertInBlacklist(pl, tr) {
-				if (asset.blacklist.indexOf(tr.id)>=0) {
-					//popup.alert(pl.name.toUpperCase() + " è già in black list");
-					return Promise.resolve();
+					else  {
+						msg('allready present in blacklist');
+					} 
 				}
-				var question = "Non sei l'owner di " + pl.name.toUpperCase() + ".\n\nVuoi mettere " + tr.name.toUpperCase() + " in Black List ?";
-				return popup.confirm(question).then(reply => {
-					if (reply) {
-						var a = asset.blacklist;
-						a.push(tr.id);
-						asset.blacklist = a;
+				else {
+					try {
+						await spotlib.deleteFromPlaylist(pl, track.uri);
+						msg('removed from '+asset.playlists[pl].name);
+					}catch(e)  {
+						msg(e);
 					}
-				});
-			
+				}
 			}
 		}
 
@@ -534,7 +506,7 @@ function prova2() {
 		else if (loopState==1) {
 			loopEnd = now()-songTimeStart;
 			spotlib.seek(loopStart).then(asset.refreshStatus);
-			loopTimeout = setTimeout(t, loopEnd - loopStart);
+			loopTimeout = setTimeout(t, loopEnd - loopStart, 'loop');
 			loopState = 2;
 			$('.button.b-loop').attr('data-state', 'c');
 		}
@@ -556,7 +528,7 @@ function prova2() {
 		function t() {
 			if (loopState == 2) {
 				spotlib.seek(loopStart).then(asset.refreshStatus);
-				loopTimeout = setTimeout(t, loopEnd - loopStart);
+				loopTimeout = setTimeout(t, loopEnd - loopStart, 'loop t');
 			}
 			else
 				loopTimeout = -1;

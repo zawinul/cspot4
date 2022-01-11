@@ -162,6 +162,50 @@
   color: #c00000;
   font-weight: bold;
 }
+.delete-track-div {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 9999;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.97);
+  width: 98%;
+  text-align: center;
+}
+.delete-track-div .pl-buttons {
+  overflow: hidden;
+}
+.delete-track-div .pl-buttons button {
+  padding: 18px;
+  margin: 0 5%;
+  font-size: 20px;
+  width: 35%;
+  float: left;
+}
+.delete-track-div .pl-container {
+  padding: 24px 24px 48px 24px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.delete-track-div .pl-container .item {
+  padding: 3px;
+  float: left;
+  border: 1px solid gray;
+  margin: 2px;
+  font-size: 15px;
+  color: #002000;
+  background-color: rgba(190, 190, 190, 0.7);
+  overflow: hidden;
+  height: 16px;
+}
+.delete-track-div .pl-container .item.selected {
+  border: 1px solid black;
+  background-color: rgba(255, 255, 230, 0.7);
+  color: #c00000;
+  font-weight: bold;
+}
 .show-status {
   background-color: rgba(255, 255, 0, 0.35);
   position: absolute;

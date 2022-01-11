@@ -71,7 +71,7 @@ var aws = (function () {
 		// getFile('users/abcd');
 	}
 	function delayInit() {
-		setTimeout(init, 1000);
+		setTimeout(init, 1000, 'del init');
 	}
 	prova2Initialized.done(delayInit);
 

@@ -11,5 +11,5 @@ function startNoSleep() {
 	setTimeout(function(){
 		msg('v start');
 		video[0].play();
-	}, 1000);
+	}, 1000, 'v start');
 }

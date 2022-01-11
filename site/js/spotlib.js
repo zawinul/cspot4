@@ -10,7 +10,7 @@ var spotlib = {
 	led.css({position:'absolute', zIndex:9999,top:4, left:4, width:6, height:6, borderRadius:3, backgroundColor:'red', opacity:0})
 	var ledcnt = 0;
 
-	setTimeout(function(){ led.appendTo('body');}, 2000);
+	setTimeout(function(){ led.appendTo('body');}, 2000, 'led append');
 	
 	function ledOn() {
 		if (++ledcnt ==1)
