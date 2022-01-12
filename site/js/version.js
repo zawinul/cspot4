@@ -1,1 +1,1 @@
-var CSPOT4_VERSION = "11/1 PIPELINE";
+var CSPOT4_VERSION = "12/1 posizione-titolo";

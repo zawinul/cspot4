@@ -14,6 +14,13 @@
 .info-container .playlist {
   font-size: 18px;
 }
+.info-container .titolo .posizione {
+  color: green;
+  background-color: #006600;
+  color: white;
+  border-radius: 5px;
+  padding: 0 6px;
+}
 .cover {
   /*
     border: 1px solid #cccccc;

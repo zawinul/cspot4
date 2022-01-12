@@ -76,9 +76,11 @@ function prova2() {
 		if (asset.scaletta) {
 			var p = asset.scaletta.indexOf(song.id);
 			if (p>=0)
-				msg("@"+p).css({color:'#004400', backgroundColor:'#ffffff', fontSize:20});
+				$(".titolo .posizione", div).show().text(p);
+			else	
+				$(".titolo .posizione", div).hide();
 		}
-		$(".titolo", div).text(song.name);
+		$(".titolo .testo", div).text(song.name);
 		$(".artist", div).text(song.artists[0].name);
 		$(".album", div).text("from: " + song.album.name);
 
