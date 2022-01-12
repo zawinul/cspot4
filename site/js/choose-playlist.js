@@ -10,7 +10,7 @@ async function choosePlaylists() {
 	});
 
 	var div = $('<div/>').appendTo('body')
-	$.get('select-playlists.html').then(function(txt){
+	$.get('site/select-playlists.html').then(function(txt){
 		div.html(txt);
 		onHtmlLoaded();
 	});

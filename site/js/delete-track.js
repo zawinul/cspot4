@@ -17,7 +17,7 @@ async function deleteTrack(trid) {
 	playlists.push({id: 'blacklist', name:"insert in blacklist"});
 
 	var div = $('<div/>').appendTo('body')
-	$.get('delete-track.html').then(function(txt){
+	$.get('site/delete-track.html').then(function(txt){
 		div.html(txt);
 		onHtmlLoaded();
 	});

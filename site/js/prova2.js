@@ -76,7 +76,7 @@ function prova2() {
 		if (asset.scaletta) {
 			var p = asset.scaletta.indexOf(song.id);
 			if (p>=0)
-				$(".titolo .posizione", div).show().text(p);
+				$(".titolo .posizione", div).show().text(p+1);
 			else	
 				$(".titolo .posizione", div).hide();
 		}
@@ -164,8 +164,7 @@ function prova2() {
 		var d = $.Deferred();
 		div = $('<div/>').addClass('prova2-container');
 		$('.prova2').hide();
-		//div.load('prova2.html', {}, onLoad);
-		$.get('prova2.html').then(function(txt){
+		$.get('site/prova2.html').then(function(txt){
 			div.html(txt);
 			onLoad();
 		});
@@ -449,7 +448,7 @@ function prova2() {
 	};
 
 	function loadCss() {
-		$('<link>').appendTo('head').attr({ type: 'text/css', rel: 'stylesheet', href: 'css/prova2.css' });
+		$('<link>').appendTo('head').attr({ type: 'text/css', rel: 'stylesheet', href: 'site/css/prova2.css' });
 	}
 
 	function updateProgress() {

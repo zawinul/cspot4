@@ -553,7 +553,7 @@ var spotlib = {
 			}, false);
 			getToken.listenerAdded = true;
 		}
-		window.open('../auth/index.html?__START__=1');
+		window.open('auth/index.html?__START__=1');
 		return d;
 	}
 
