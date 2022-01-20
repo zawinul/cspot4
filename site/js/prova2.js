@@ -107,9 +107,14 @@ function prova2() {
 		var arr = asset.selectedPlayLists;
 		selectedTracks = [];
 		var pt = asset.playlistsTracks;
-		for(plid of arr) 
-			for(tr of pt[plid])	
+		for(plid of arr) {
+			for(tr of pt[plid])	{
+				if (tr.uri.indexOf('local')>=0)
+					continue;
 				selectedTracks.push(tr);
+			
+			}
+		}
 	}
 
 	var lastPlayRandomAndSilence = 0;
