@@ -197,15 +197,16 @@
   overflow: hidden;
 }
 .delete-track-div .pl-container .item {
-  padding: 3px;
+  padding: 5px 25px;
   float: left;
   border: 1px solid gray;
   margin: 2px;
-  font-size: 15px;
+  font-size: 26px;
   color: #002000;
   background-color: rgba(190, 190, 190, 0.7);
   overflow: hidden;
-  height: 16px;
+  height: 35px;
+  border-radius: 3px;
 }
 .delete-track-div .pl-container .item.selected {
   border: 1px solid black;

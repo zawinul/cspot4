@@ -315,7 +315,7 @@ function prova2() {
 				return;
 			}
 			asset.selectedPlayLists = arr;
-			await playRandomAndSilence(10);
+			await playRandomAndSilence(50);
 		}
 
 

@@ -216,11 +216,12 @@ async function updateAssetFromSpotify() {
 	for (var sList of spotifyPlaylists) {
 		var aList = shadow.playlists[sList.id];
 		if (!aList || (aList.snapshot_id!=sList.snapshot_id)) {
-			if (aList) 
-				msg('OLD '+aList.name+'\n'+aList.snapshot_id);
-			else
-				msg('OLD'+sList.name+' non presente');
-			msg('NEW '+sList.name+'\n'+sList.snapshot_id);
+			// if (aList) 
+			// 	msg('OLD '+aList.name+'\n'+aList.snapshot_id);
+			// else
+			// 	msg('OLD'+sList.name+' non presente');
+			// msg('NEW '+sList.name+'\n'+sList.snapshot_id);
+			//msg(sList.name);
 			promises.push(updatePlaylistFromSpotify(sList, shadow));
 			changed = true;
 		}
