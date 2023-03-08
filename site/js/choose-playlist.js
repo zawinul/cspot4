@@ -1,8 +1,16 @@
 // .
-async function choosePlaylists() {
-	var playlists = asset.playlists;
+async function choosePlaylists(filter) {
+	var playlists = clone(asset.playlists);
+	
 	if (!asset.updatedFromSpotify)
 		playlists = await spotlib.getPlaylists();
+	
+	if (filter) {
+		for(var k in playlists) {
+			if (!filter(playlists[k]))
+				delete playlists[k];
+		}
+	}
 	
 	var promResolve;
 	var prom = new Promise(function(resolve, reject){

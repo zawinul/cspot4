@@ -15,7 +15,7 @@ async function deleteTrack(trid) {
 		return true;	
 	});
 	if (playlists.length==0)
-		playlists.push({id: 'blacklist', name:"insert in blacklist"});
+		playlists.push({id: 'blacklist', name:""});
 
 	var div = $('<div/>').appendTo('body')
 	$.get('site/delete-track.html').then(function(txt){
@@ -33,7 +33,8 @@ async function deleteTrack(trid) {
 		$('.cancelbutton', div).click(()=>close(false, []));
 		for(let pl of playlists) {
 			let id = pl.id;
-			var pldiv = template.clone().appendTo(container).addClass('item selected').attr('id',id).text('Delete from '+pl.name);
+			let msg = id=='blacklist' ?  'Insert in blacklist' : 'Delete from '+pl.name;
+			var pldiv = template.clone().appendTo(container).addClass('item selected').attr('id',id).text(msg);
 			pldiv.click(function () {
 				close([id]);
 			});

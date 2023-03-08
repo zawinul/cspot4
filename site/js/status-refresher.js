@@ -1,57 +1,46 @@
-var oldTimeout = setTimeout;
-var oldClearTimeout = clearTimeout;
-var timeouts = {}
 
-window.setTimeout = function (callback, timeout, label) {
-	if (!label)
-		label = '?';
-	//console.log("timeout started");
-	var exp = now()+timeout;
-	var r =  oldTimeout(function () {
-		//console.log('timeout finished');
-		delete timeouts[r];
-		callback();
-	}, timeout);
-	timeouts[r]={label, exp};
-	return r;
-}
-
-window.clearTimeout = function (t){
-	oldClearTimeout(t);
-	delete timeouts[t];
-}
+var curTimeout, curTimeoutStart, curTimeoutEnd;
 
 function spotStatusRefresher(onStatusData){
 	const PERIOD = 5000;
-	var curTimeout, curTimeoutStart, curTimeoutEnd;
 
 
 	
 	function onData(data) {
-		$('.statusled').hide();
-		curTimeout = null;
-		onStatusData(data);
+		try {
+			$('.statusled').hide();
+			curTimeout = null;
+			onStatusData(data);
+		}catch(e) {
+			console.log(e);
+		}
 		refresh(PERIOD);
 	}
 
 	function onFail(e) {
-		console.log('on fail');
-		$('.statusled').hide();
-		curTimeout = null;
-		console.log({getStatusError:arguments});
+		try {
+			console.log('on fail');
+			$('.statusled').hide();
+			curTimeout = null;
+			console.log({getStatusError:e});
+		}catch(e) {
+			console.log(e);
+		}
 		refresh(PERIOD);
 	}
 
 	function _doRefresh() {
-		//log('get spot status');
+		console.log('_doRefresh()');
 		$('.statusled').show();
-		spotlib.getStatus().then(onData, onFail);
+		spotlib.getStatus()
+			//.then(aaa=>{console.log({aaa}); return aaa;})
+			.then(onData)
+			.catch(onFail);
 	}
 
 	function refresh(ms) {
-		log('spot status refresh '+ms);
-		var t = now;
-
+		console.log('spot status refresh '+ms);
+		var t = now();
 
 		if (!ms || ms<0) { // immediate
 			if (curTimeout) {
@@ -67,6 +56,7 @@ function spotStatusRefresher(onStatusData){
 			return;
 		}
 
+		// devo forzare un refresh anticipato
 		if (curTimeout) {
 			clearTimeout(curTimeout);
 			curTimeout = null;
@@ -74,21 +64,14 @@ function spotStatusRefresher(onStatusData){
 
 		curTimeoutStart = t;
 		curTimeoutEnd = curTimeoutStart+ms;
-		curTimeout = setTimeout(_doRefresh, ms, 'st refresh');
+		curTimeout = setTimeout(_doRefresh, ms);
 		//log("next trigger: "+curTimeoutEnd);
 	}
 
 
 
 	spotlib.initialized.then(refresh);
-	function log(x) {
-		//console.log(x);
-	}
 
-	function setlog(x) {
-		console.log('setlog');
-		log = x;
-	}
 
 	return {
 		refresh

@@ -73,7 +73,7 @@ var aws = (function () {
 	function delayInit() {
 		setTimeout(init, 1000, 'del init');
 	}
-	prova2Initialized.done(delayInit);
+	prova2Initialized.then(delayInit);
 
 	return {
 		get: get,

@@ -83,7 +83,7 @@ function prova2() {
 		$(".titolo .testo", div).text(song.name);
 		$(".artist", div).text(song.artists[0].name);
 		$(".album", div).text("from: " + song.album.name);
-
+		document.title='CSPOT4 '+song.artists[0].name;
 		$('body').css({ backgroundImage: 'url("' + song.album.images[0].url + '")' });
 		var pt = asset.playlistsTracks;
 		var plNames = [];
@@ -258,7 +258,7 @@ function prova2() {
 			// 	var thisSongUri = status.item.uri;
 			// 	var insertPoint = _cursor + 1;
 			// 	var ids = album.tracks.items.map(x => x.id);
-			// 	spotlib.getTracksById(ids).done(result => {
+			// 	spotlib.getTracksById(ids).then(result => {
 			// 		if (result.tracks.length <= 1) {
 			// 			msg("nothing to do");
 			// 			return;
@@ -296,13 +296,13 @@ function prova2() {
 			// 		msg("CURSOR=" + _cursor + " INSERT" + insertPoint);
 			// 	});
 			// }
-			// spotlib.getStatus().done(s => {
+			// spotlib.getStatus().then(s => {
 			// 	status = s;
 			// 	if (_cursor >= 0) {
 			// 		restart_cur = _cursor;
 			// 		restart_ms = s.progress_ms;
 			// 	}
-			// 	spotlib.getAlbum(status.item.album.id).done(onAlbum);
+			// 	spotlib.getAlbum(status.item.album.id).then(onAlbum);
 			// });
 		}
 
@@ -359,23 +359,19 @@ function prova2() {
 			if (addThisSong.pl)
 				return f(addThisSong.pl);
 
-			db.getPlaylists().filter(x => x.name == '__/A\\__').subscribe(pl => {
-				f(addThisSong.pl = pl.id);
+			let plid = _.values(asset.playlists).filter(x => x.name == '__/A\\__')[0].id;
+			spotlib.getStatus().then(status => {
+				if (!status)
+					return msg('fail');
+
+				var song = status.item;
+				spotlib.addToPlaylist(plid, song.uri).then(() => msg('OK'));
 			});
 
-			function f(plid) {
-				spotlib.getStatus().done(status => {
-					if (!status)
-						return msg('fail');
-
-					var song = status.item;
-					spotlib.addToPlaylist(plid, song.uri).done(() => msg('OK'));
-				});
-			}
 		}
 
 		function playProgressClick(evt) {
-			spotlib.getStatus().done(status => {
+			spotlib.getStatus().then(status => {
 				try {
 					//updateSong();
 					var x = evt.originalEvent.clientX;

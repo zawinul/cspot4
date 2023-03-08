@@ -2,6 +2,7 @@
 	var start = $.Deferred();
 
 	function msg(html, css) {
+		console.log('msg '+html);
 		const time = 5000;
 		var m = $('<div/>').addClass('msg-item').html(html).css({
 			padding:"2px 3px",
@@ -32,7 +33,7 @@
 			clearTimeout(t);
 			t = setTimeout(chiudi,tt, 'msg 2');
 		};
-		container().done(function(c) { m.appendTo(c);});
+		container().then(function(c) { m.appendTo(c);});
 		return m;
 	}
 	window.msg = msg;

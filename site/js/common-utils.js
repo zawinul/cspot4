@@ -2,12 +2,12 @@ const clone = x=>$.extend(true, {}, {a:x}).a;
 const now = () =>new Date().getTime();
 
 
-(function rotellaTitolo() {
-	var provarot = ['|','/','-','\\'], provarotc=0;
-	setInterval(function(){
-		document.title='CSPOT4 '+provarot[(provarotc++)%4];
-	}, 1000);	
-})();
+// (function rotellaTitolo() {
+// 	var provarot = ['|','/','-','\\'], provarotc=0;
+// 	setInterval(function(){
+// 		document.title='CSPOT4 '+provarot[(provarotc++)%4];
+// 	}, 1000);	
+// })();
 
 Math.seed = function (s) {
 	s = s || new Date().getTime() * .0000000001;
