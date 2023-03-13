@@ -1,1 +1,1 @@
-var CSPOT4_VERSION = "20/1 pipeline test";
+var CSPOT4_VERSION = "21 cd";
