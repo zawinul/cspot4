@@ -128,7 +128,7 @@ var asset = (function(){
 			data.status = s;
 			data.curItem = s.item;
 			trigger('play-status', s);
-			if (s.item && s.item.id && oldItemId && (oldItemId!=s.item.id))
+			if (s.item && s.item.id &&  (oldItemId!=s.item.id))
 				trigger('track-changed');			
 			
 

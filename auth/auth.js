@@ -91,6 +91,8 @@ function receiveParams() {
 					url: location.href 
 				};
 				window.opener.postMessage(btoa(JSON.stringify(msg)), "*");
+				setTimeout(function () { window.close(); }, 100, 'win close');
+				
 			}
 		});	
 	},err=> {

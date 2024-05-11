@@ -59,7 +59,9 @@ var spotlib = {
 					console.log(e);
 				}
 			}
-			console.log({theReq:req})
+			//console.log({before:req})
+			//patchReq(req);
+			//console.log({afer:req})
 			$.ajax(req);
 		});
 		let data = await p;
@@ -82,6 +84,17 @@ var spotlib = {
 
 		return sendReq(opt);
 	}
+
+
+
+
+	function patchReq(req) {
+		let u = req.url;
+		req.headers['Target-Endpoint'] = u;
+		req.url = 'http://127.0.0.1:3000';
+	}
+
+
 
 
 	function deleteFromPlaylist(playlistId, songUri) {
