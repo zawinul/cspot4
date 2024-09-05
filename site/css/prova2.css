@@ -5,21 +5,32 @@
   width: 94%;
   text-transform: uppercase;
 }
-.info-container .artist {
-  color: #006600;
+.info-container .info {
+  display: flex;
+  flex-direction: row;
 }
-.info-container .album {
-  font-size: 22px;
-}
-.info-container .playlist {
-  font-size: 18px;
-}
-.info-container .titolo .posizione {
+.info-container .info.titolo .posizione {
   color: green;
   background-color: #006600;
   color: white;
   border-radius: 5px;
   padding: 0 6px;
+  margin-right: 10px;
+}
+.info-container .info.artist {
+  color: #006600;
+}
+.info-container .info.album {
+  font-size: 22px;
+}
+.info-container .info.playlist {
+  font-size: 18px;
+}
+.info-container .info .testo {
+  flex-grow: 1;
+}
+.info-container .info .prefix {
+  padding-right: 12px;
 }
 .cover {
   /*

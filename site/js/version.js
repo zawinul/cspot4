@@ -1,1 +1,1 @@
-var CSPOT4_VERSION = "22 aggiorna dopo send";
+var CSPOT4_VERSION = "25 album";

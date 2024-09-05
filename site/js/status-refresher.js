@@ -30,7 +30,7 @@ function spotStatusRefresher(onStatusData){
 	}
 
 	function _doRefresh() {
-		console.log('_doRefresh()');
+		//console.log('_doRefresh()');
 		$('.statusled').show();
 		spotlib.getStatus()
 			//.then(aaa=>{console.log({aaa}); return aaa;})
@@ -39,7 +39,7 @@ function spotStatusRefresher(onStatusData){
 	}
 
 	function refresh(ms) {
-		console.log('spot status refresh '+ms);
+		//console.log('spot status refresh '+ms);
 		var t = now();
 
 		if (!ms || ms<0) { // immediate

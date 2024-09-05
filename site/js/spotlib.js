@@ -26,7 +26,8 @@ var spotlib = {
 	}
 
 	async function sendReq(req) {
-		console.log({sendReq:req});
+		if (!req.myNoLog)
+				console.log({sendReq:req});
 		let token = await getToken();
 		let p = new Promise(function(resolve, reject){
 			ledOn();
@@ -65,7 +66,8 @@ var spotlib = {
 			$.ajax(req);
 		});
 		let data = await p;
-		console.log({pdata:data})
+		if (!req.myNoLog)
+			console.log({pdata:data})
 		return data;
 	}
 
@@ -121,6 +123,14 @@ var spotlib = {
 		url += "?uri=" + escape(songUri);
 		var opts = {
 			method: 'post'
+		};
+		return callSpotify(url, null, opts);
+	}
+
+	function getQueue() {
+		var url = "https://api.spotify.com/v1/me/player/queue";
+		var opts = {
+			method: 'get'
 		};
 		return callSpotify(url, null, opts);
 	}
@@ -217,7 +227,7 @@ var spotlib = {
 		var u = 'https://api.spotify.com/v1/me/player/shuffle'
 		if (typeof (s) != 'undefined')
 			u += '?state=' + (!!arguments[0]);
-		return callSpotify(u, null, { method: 'put' });
+		return callSpotify(u, null, { method: 'put', dataType:'text' });
 	}
 
 	function getCategories() {
@@ -265,7 +275,8 @@ var spotlib = {
 				let x = await sendReq({
 					method: 'GET',
 					dataType: 'text',
-					url: "https://api.spotify.com/v1/me/player"
+					url: "https://api.spotify.com/v1/me/player",
+					myNoLog:true
 				});
 				if (x && x.trim()!='')  {
 					spotlib.status = JSON.parse(x);
@@ -322,7 +333,9 @@ var spotlib = {
 	function playNext() {
 		var opt = {
 			url: "https://api.spotify.com/v1/me/player/next",
-			method: 'POST'
+			method: 'POST',
+			dataType: 'text'
+
 		};
 		return spotlib.sendReq(opt);
 	}
@@ -330,7 +343,8 @@ var spotlib = {
 	function playPrevious() {
 		var opt = {
 			url: "https://api.spotify.com/v1/me/player/previous",
-			method: 'POST'
+			method: 'POST',
+			dataType: 'text'
 		};
 		return spotlib.sendReq(opt);
 	}
@@ -694,7 +708,8 @@ var spotlib = {
 	function pause() {
 		var opt = {
 			url: 'https://api.spotify.com/v1/me/player/pause',
-			method: 'put'
+			method: 'put',
+			dataType: 'text'
 		};
 
 		return sendReq(opt).then(x => {
@@ -705,7 +720,8 @@ var spotlib = {
 	function resume() {
 		var opt = {
 			url: 'https://api.spotify.com/v1/me/player/play',
-			method: 'put'
+			method: 'put',
+			dataType: 'text'
 		};
 		return sendReq(opt).then(x => {
 			console.log('resumed');
@@ -715,7 +731,8 @@ var spotlib = {
 	function seek(ms) {
 		var opt = {
 			url: 'https://api.spotify.com/v1/me/player/seek?position_ms=' + Math.floor(ms),
-			method: 'put'
+			method: 'put',
+			dataType: 'text'
 		};
 		return sendReq(opt).then(x => {
 			console.log('seeked to ' + ms);
@@ -732,6 +749,7 @@ var spotlib = {
 		deleteFromPlaylist,
 		addToPlaylist,
 		addToQueue,
+		getQueue,
 		getPlaylists,
 		getPlaylistIds,
 		getFeaturedPlaylists,

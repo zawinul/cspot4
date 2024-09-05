@@ -1,13 +1,26 @@
 <div>
 	<div class="statusled">S</div>
-	<div class="info info-container testprova2">
+	<div class="info-container testprova2">
 		<div class="info titolo">
-			<span class="posizione"></span>
-			<span class="testo"></span>
+			<div class="posizione"></div>
+			<rotating-label class="testo"></rotating-label>
 		</div>
-		<div class="info artist"></div>
-		<div class="info album"></div>
-		<div class="info playlist"></div>
+		<div class="info artist">
+			<rotating-label class="testo"/>
+		</div>
+		<div class="info album">
+			<div class="prefix">From:</div>
+			<rotating-label class="testo"/>
+		</div>
+		<div class="info playlist">
+			<div class="prefix">Playlist:</div>
+			<rotating-label class="testo"/>
+		</div>
+		<!--
+		<rotating-label  text="pippo"></rotating-label>
+		<rotating-label class="info album"></rotating-label>
+		<rotating-label class="info playlist"></rotating-label>
+		-->
 	</div>
 
 	<div class="buttons">

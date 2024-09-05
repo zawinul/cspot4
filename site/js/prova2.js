@@ -49,8 +49,9 @@ function prova2() {
 
 			asset.on('track-changed', updateSong);
 			asset.on('track-changed', function() {
-				if (asset.curItem) 
-					msg(asset.curItem.name).css({ backgroundColor: 'white' });
+				// if (asset.curItem) 
+				// 	msg(asset.curItem.name).css({ backgroundColor: 'white' });
+				console.log('asset.curItem.name='+asset.curItem.name);
 			});
 			asset.refreshStatus();
 			updateSong();
@@ -74,15 +75,15 @@ function prova2() {
 	function showSong(song) {
 
 		if (asset.scaletta) {
-			var p = asset.scaletta.indexOf(song.id);
+			var p = asset.scaletta.indexOf(song.uri);
 			if (p>=0)
 				$(".titolo .posizione", div).show().text(p+1);
 			else	
 				$(".titolo .posizione", div).hide();
 		}
-		$(".titolo .testo", div).text(song.name);
-		$(".artist", div).text(song.artists[0].name);
-		$(".album", div).text("from: " + song.album.name);
+		$(".titolo .testo", div).attr('text', song.name);
+		$(".artist .testo", div).attr('text',song.artists[0].name);
+		$(".album .testo", div).attr('text', song.album.name);
 		document.title='CSPOT4 '+song.artists[0].name;
 		$('body').css({ backgroundImage: 'url("' + song.album.images[0].url + '")' });
 		var pt = asset.playlistsTracks;
@@ -97,10 +98,10 @@ function prova2() {
 		}
 		console.log({plNames});
 		if (plNames && plNames.length >= 1) {
-			$(".playlist", div).text("playlist: " + plNames.join(', '));
+			$(".playlist .testo", div).attr('text',plNames.join(', '));
 		}
 		else
-			$(".playlist", div).text("playlist: ---");
+			$(".playlist", div).attr('text', "playlist: ---");
 	}
 
 	function getSelectedTracks() {
@@ -108,6 +109,8 @@ function prova2() {
 		selectedTracks = [];
 		var pt = asset.playlistsTracks;
 		for(plid of arr) {
+			if (!pt[plid])
+				continue;
 			for(tr of pt[plid])	{
 				if (tr.uri.indexOf('local')>=0)
 					continue;
@@ -136,7 +139,7 @@ function prova2() {
 		for(var i=0; i<n; i++) {
 			var tr = selectedTracks[(cursor+i)%selectedTracks.length];
 			uris.push(tr.uri);
-			scaletta.push(tr.id);
+			scaletta.push(tr.uri);
 		}
 		uris.push(silenceTrack.uri);
 
@@ -251,59 +254,46 @@ function prova2() {
 
 
 		function album() {
-			// var status;
-			// var restart_ms;
-			// var restart_cur;
-			// function onAlbum(album) {
-			// 	var thisSongUri = status.item.uri;
-			// 	var insertPoint = _cursor + 1;
-			// 	var ids = album.tracks.items.map(x => x.id);
-			// 	spotlib.getTracksById(ids).then(result => {
-			// 		if (result.tracks.length <= 1) {
-			// 			msg("nothing to do");
-			// 			return;
-			// 		}
+			async_album();
+		}
 
-			// 		var position = -1;
-			// 		for (var i = 0; i < result.tracks.length; i++)
-			// 			if (result.tracks[i].uri == thisSongUri)
-			// 				position = i;
+		async function async_album() {
+			console.log('album');
+			//debugger;
+			let status = await spotlib.getStatus();
+			let thisSongUri = status.item.uri;
+			let albumId = status.item.album.id;
+			let album = await spotlib.getAlbum(albumId);
+			//var insertPoint = _cursor + 1;
 
-			// 		if (position >= 0) {
-			// 			msg('track at pos ' + i);
-			// 			for (var i = 1; i < result.tracks.length; i++) {
-			// 				var tp = (i + position) % result.tracks.length;
-			// 				var tr = result.tracks[tp];
-			// 				scaletta.splice(insertPoint, 0, tr.id);
-			// 				msg(insertPoint + '<-' + tp + ' ' + tr.name);
-			// 				console.log(insertPoint + '<-' + tp + ' ' + tr.name);
-			// 				insertPoint++;
-			// 			}
-			// 		}
-			// 		else {
-			// 			msg('traccia non trovata nell\'album');
-			// 			for (var i = 0; i < result.tracks.length; i++) {
-			// 				var tr = result.tracks[i];
-			// 				if (tr.uri == thisSongUri)
-			// 					continue;
-			// 				scaletta.splice(insertPoint, 0, tr.id);
-			// 				console.log('aggiunto in posizione ' + insertPoint + ': ' + tr.name);
-			// 				msg(insertPoint + '<-' + i + ' ' + tr.name);
-			// 				insertPoint++;
-			// 			}
-			// 		}
-			// 		//commands.startAt(restart_cur, restart_ms);
-			// 		msg("CURSOR=" + _cursor + " INSERT" + insertPoint);
-			// 	});
-			// }
-			// spotlib.getStatus().then(s => {
-			// 	status = s;
-			// 	if (_cursor >= 0) {
-			// 		restart_cur = _cursor;
-			// 		restart_ms = s.progress_ms;
-			// 	}
-			// 	spotlib.getAlbum(status.item.album.id).then(onAlbum);
-			// });
+			// var ids = album.tracks.items.map(x => x.id);
+			// let result = await	spotlib.getTracksById(ids);
+			if (!album.tracks.items || album.tracks.items.length <= 1) 
+			 	return msg("nothing to do");
+			for(t of album.tracks.items)
+				msg(t.name);
+			let scaletta = asset.scaletta;
+			if (!scaletta) 
+				scaletta = [];
+			let pos = scaletta.indexOf(thisSongUri);
+			if (pos>=0) {
+				let insertPos = pos;
+				scaletta.splice(pos,1);
+				for (t of album.tracks.items)
+					scaletta.splice(insertPos++,0,t.uri);
+			}
+			else {
+				pos = 0;
+				for (t of album.tracks.items)
+					scaletta.unshift(t.uri);
+			}
+			let uris = [];
+			for(let i=pos; i<scaletta.length; i++)
+				uris.push(scaletta[i]);
+			asset.scaletta = scaletta;
+			await spotlib.playUri(uris, null, 0).then(asset.refreshStatus);
+			pwait(500).then(asset.refreshStatus);
+	
 		}
 
 		async function random() {

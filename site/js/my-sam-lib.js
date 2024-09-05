@@ -1,14 +1,17 @@
+// SAM = State-Action-Model
+// Il model è composto da liste di acceptor e reactor
+// Le action sono delle funzioni event=>proposals 
 
-// nap: function(representation) => boolean noRender
-// action;  free json data
-// acceptor: function(action, model), can modify the model
-// reactor: function(model), can modify the model, decoupled from actions
+// proposal;  free json data
+// acceptor(s): function(proposal, model), can modify the model
+// reactor(s): function(model), can modify the model, decoupled from proposals
 // representer: function(model), return a representation of the model with no link to the original model 
 // render: function(representation)
+// nap: function(representation) => boolean noRender
 
 
 function statemanager(cfg) {
-	let actions = [];
+	let proposals = [];
 	let acceptors = [];
 	let reactors = [];
 	let naps = [];
@@ -36,7 +39,7 @@ function statemanager(cfg) {
 
 	function propose(act, immediate) {
 		//console.log(JSON.stringify({propose:act}));
-		actions.push(act);
+		proposals.push(act);
 		if (immediate)
 			_step();
 		else {
@@ -79,8 +82,8 @@ function statemanager(cfg) {
 	}
 
 	function _present() {
-		let tmp = actions.slice();
-		actions = [];
+		let tmp = proposals.slice();
+		proposals = [];
 		for(var i=0;i<tmp.length; i++) {
 			_presentAct(tmp[i]);
 		}
@@ -104,13 +107,13 @@ function statemanager(cfg) {
 	function _step() {
 		if (!_stepArmed)
 			return;
-		if (!actions || actions.length==0)
+		if (!proposals || proposals.length==0)
 			return;
 
 		var noRender = true;
 		let representation;
 		try {
-			while(actions.length>0) {
+			while(proposals.length>0) {
 				_present();
 				_react();
 				representation = representer(model);
@@ -135,11 +138,12 @@ function statemanager(cfg) {
 		render = cfg.render || defaultRender;
 		representer = cfg.representer || defaultRepresenter;
 		return {
+			propose,
+
 			setModel,
 			setRender,
 			setRepresenter,
 			addNap,
-			propose,
 			addReactor,
 			addAcceptor
 		}

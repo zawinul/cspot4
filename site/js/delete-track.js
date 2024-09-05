@@ -7,12 +7,21 @@ async function deleteTrack(trid) {
 
 
 	var playlists = _.values(asset.playlists).filter(function(pl) {
-		if (pl.owner.id!=asset.profile.id)
+		try {
+			if (pl.owner.id!=asset.profile.id)
+				return false;
+			var ptracks = asset.playlistsTracks[pl.id];
+			if (!ptracks)
+				return false;
+			ptracks = ptracks.map(tr=>tr.id);
+			if (ptracks.indexOf(trid)<0)
+				return false;
+			return true;	
+		} catch(e) {
+			debugger;
+			console.log(e);
 			return false;
-		var pltracks = asset.playlistsTracks[pl.id].map(tr=>tr.id);
-		if (pltracks.indexOf(trid)<0)
-			return false;
-		return true;	
+		}
 	});
 	if (playlists.length==0)
 		playlists.push({id: 'blacklist', name:""});
