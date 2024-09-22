@@ -4,9 +4,6 @@ var commands;
 var div;
 
 var resetNeeded = false;
-//var silenceTrackId = '1nKY2o8XQG1RvUCpBV5VSK';
-var silenceTrackId = '2bNCdW4rLnCTzgqUXTTDO1';
-var silenceTrack;
 var timerPeriod = 5000;
 var curTrack;
 
@@ -20,31 +17,24 @@ function prova2() {
 	async function initialize() {
 		try {
 			$('.app').hide(1);
+			let p1 = spotlib.init().then(initializeDevice).then(function(device) {
+				msg('device=' + device.name);
+			});
+			await Promise.all([p1, db2.isReady]);
 
-			await db2.isReady;
-			await spotlib.init();
-			//.then(startNoSleep)
-			var d = await initializeDevice()
-			msg('D=' + d.name);
-
-			me = await spotlib.getProfile();
-			asset.profile = me;
+			me = spotlib.profile;
 			loadCss();
-			//await initializeLists();
 
-			await updateAssetFromDB();
+			await updateAssetFromDB(spotlib.profile.id);
 			await initializePage();
-			//timerFun();
-
-			silenceTrack = await asset.getTrack(silenceTrackId);
-
 
 			//	spotStatus.addListener(onStatus);
 			asset.on('play-status', onStatus);
 			setTimeout(function(){
+				msg('upd from spotify').css({backgroundColor:'white'});
 				console.log('calling updatePlaylistFromSpotify');
 				updateAssetFromSpotify();
-			}, 2500, "upd spotify");
+			}, 5000, "upd spotify");
 
 
 			asset.on('track-changed', updateSong);
@@ -86,12 +76,12 @@ function prova2() {
 		$(".album .testo", div).attr('text', song.album.name);
 		document.title='CSPOT4 '+song.artists[0].name;
 		$('body').css({ backgroundImage: 'url("' + song.album.images[0].url + '")' });
-		var pt = asset.playlistsTracks;
+		var pt = asset.getPlaylistsTracks();
 		var plNames = [];
 		for(var plid in pt) {
 			for(var tr of pt[plid]) {
 				if (tr.id==song.id) {
-					plNames.push(asset.playlists[plid].name);
+					plNames.push(asset.getPlaylists()[plid].name);
 					break;
 				}
 			}
@@ -105,9 +95,9 @@ function prova2() {
 	}
 
 	function getSelectedTracks() {
-		var arr = asset.selectedPlayLists;
+		var arr = asset.getSelectedPlayLists();
 		selectedTracks = [];
-		var pt = asset.playlistsTracks;
+		var pt = asset.getPlaylistsTracks();
 		for(plid of arr) {
 			if (!pt[plid])
 				continue;
@@ -141,7 +131,6 @@ function prova2() {
 			uris.push(tr.uri);
 			scaletta.push(tr.uri);
 		}
-		uris.push(silenceTrack.uri);
 
 		lastPlayRandomAndSilence = now();
 		asset.scaletta=scaletta;
@@ -150,23 +139,6 @@ function prova2() {
 		pwait(500).then(asset.refreshStatus);
 		lastPlayRandomAndSilence = now();
 	}
-	// async function playRandomAndSilence(n) {
-	// 	if (!n)
-	// 		n=1;
-	// 	var t = now();
-	// 	if (t-lastPlayRandomAndSilence < 5000)
-	// 		return;
-	// 	lastPlayRandomAndSilence = t;
-	// 	for(var i=0; i<n; i++) {
-	// 		var tr = selectedTracks[Math.floor(Math.random()*selectedTracks.length)];
-	// 		await spotlib.addToQueue(tr.uri);
-	// 		if (i==0)
-	// 			await spotlib.playNext();
-	// 	}
-	// 	await spotlib.addToQueue(silenceTrack.uri);
-	// 	lastPlayRandomAndSilence = t;
-	// 	asset.refreshStatus();
-	// }
 
 	function initializePage() {
 		var d = $.Deferred();
@@ -222,7 +194,8 @@ function prova2() {
 
 		function gotoPrevious() {
 			console.log('goto previous');
-			var ms = asset.status ? asset.status.progress_ms : 0;
+			let st = asset.getStatus();
+			var ms = st ? st.progress_ms : 0;
 			if (!ms || ms>5000)
 				spotlib.seek(0).then(asset.refreshStatus);
 			else
@@ -304,7 +277,7 @@ function prova2() {
 				alert('non hai selezionato neanche una playlist');
 				return;
 			}
-			asset.selectedPlayLists = arr;
+			asset.setSelectedPlayLists(arr);
 			await playRandomAndSilence(50);
 		}
 
@@ -324,10 +297,10 @@ function prova2() {
 
 			for(var pl of ret.arr) {
 				if (pl=='blacklist') {
-					var p = clone(asset.blacklist);
+					var p = asset.getBlacklist();
 					if (!p.includes(track.id)) { 
 						p.push(track.id);
-						asset.blacklist = p;
+						asset.setBlacklist(p);
 						msg('inserted in blacklist');
 					}
 					else  {
@@ -337,7 +310,7 @@ function prova2() {
 				else {
 					try {
 						await spotlib.deleteFromPlaylist(pl, track.uri);
-						msg('removed from '+asset.playlists[pl].name);
+						msg('removed from '+asset.getPlaylists()[pl].name);
 					}catch(e)  {
 						msg(e);
 					}
@@ -349,7 +322,7 @@ function prova2() {
 			if (addThisSong.pl)
 				return f(addThisSong.pl);
 
-			let plid = _.values(asset.playlists).filter(x => x.name == '__/A\\__')[0].id;
+			let plid = _.values(asset.getPlaylists()).filter(x => x.name == '__/A\\__')[0].id;
 			spotlib.getStatus().then(status => {
 				if (!status)
 					return msg('fail');
@@ -425,17 +398,14 @@ function prova2() {
 		// certe volte il player rimane in playing anche se il brano è finito
 		var fineBrano = status.progress_ms > 0 && status.progress_ms == status.item.duration_ms;
 
-		// se il brano corrente è il "silence" siamo in pausa
-		var silence = (status.item.id == silenceTrackId);
-
 		barra(status);
 
 		// next song
-		if (status.device) {
-			if (silence || fineBrano) {
-				playRandomAndSilence(10);
-			}
-		}
+		// if (status.device) {
+		// 	if (fineBrano) {
+		// 		playRandomAndSilence(10);
+		// 	}
+		// }
 	};
 
 	function loadCss() {

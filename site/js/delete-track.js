@@ -6,11 +6,11 @@ async function deleteTrack(trid) {
 	});
 
 
-	var playlists = _.values(asset.playlists).filter(function(pl) {
+	var playlists = _.values(asset.getPlaylists()).filter(function(pl) {
 		try {
-			if (pl.owner.id!=asset.profile.id)
+			if (pl.owner.id!=spotlib.getProfile().id)
 				return false;
-			var ptracks = asset.playlistsTracks[pl.id];
+			var ptracks = asset.getPlaylistsTracks()[pl.id];
 			if (!ptracks)
 				return false;
 			ptracks = ptracks.map(tr=>tr.id);

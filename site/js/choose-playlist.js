@@ -1,6 +1,6 @@
 // .
 async function choosePlaylists(filter) {
-	var playlists = clone(asset.playlists);
+	var playlists = clone(asset.getPlaylists());
 	
 	if (!asset.updatedFromSpotify)
 		playlists = await spotlib.getPlaylists();
@@ -24,6 +24,7 @@ async function choosePlaylists(filter) {
 	});
 	
 	function onHtmlLoaded() {
+		debugger;
 		var template = $('.template', div).removeClass('template');
 		var container = $('.pl-container', div);
 		$('.pl-all', div).click(function(){
@@ -34,10 +35,10 @@ async function choosePlaylists(filter) {
 		});
 		$('.item', div).remove();
 		template.detach();
-		var x = asset.selectedPlayLists;
+		var x = asset.getSelectedPlayLists();
 		$('.okbutton', div).click(()=>close(true));
 		$('.cancelbutton', div).click(()=>close(false));
-		var l = clone(asset.playlists);
+		var l = clone(asset.getPlaylists());
 		for(var plId in l) {
 			var pl = l[plId];
 			var id = 'cpl'+Math.floor(Math.random()*100000000);

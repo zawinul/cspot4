@@ -2,7 +2,7 @@ var db2 = (function () {
 
 	var dbReady = $.Deferred()
 	var db2;
-	var version = 101;
+	var version = 102;
 
 	function init() {
 		window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
@@ -20,6 +20,7 @@ var db2 = (function () {
 				dbReady.resolve();
 			console.log(event);
 		};
+
 		request.onupgradeneeded = function (event) {
 			alert('onupgradeneeded '+version);
 			db2 = event.target.result;
@@ -28,12 +29,109 @@ var db2 = (function () {
 				msg('DB2 create global');
 				objectStore = db2.createObjectStore("global", { keyPath: "id" });
 			}
+
+			if (!db2.objectStoreNames.contains('playListsCacheSnapshot')) {
+				msg('DB2 create playListsCacheSnapshot');
+				objectStore = db2.createObjectStore("playListsCacheSnapshot", { keyPath: "id" });
+			}
+
+			if (!db2.objectStoreNames.contains('playListsCacheTracks')) {
+				msg('DB2 create playListsCacheTracks');
+				objectStore = db2.createObjectStore("playListsCacheTracks", { keyPath: "id" });
+			}
 		};
 	}
 
 
+	async function getPlaylistCurrSnapshot(id) {
+		await dbReady;
+		var p = new Promise(function(resolve, reject) {
+			function err(event) {
+				gestioneErrori(event);
+				reject(event);
+			}
+			var transaction = db2.transaction(["playListsCacheSnapshot"], "readonly");
+			transaction.onerror = err;
+			var request = transaction.objectStore("playListsCacheSnapshot").get(id);
+			request.onsuccess = function (event) {
+				resolve(request.result);
+			};
+			request.onerror = err;
+		});
+		var v = await p;
+		return v;
+	}
 
-	
+	async function getPlaylistTracks(id) {
+		await dbReady;
+		var p = new Promise(function(resolve, reject) {
+			function err(event) {
+				gestioneErrori(event);
+				reject(event);
+			}
+			var transaction = db2.transaction(["playListsCacheTracks"], "readonly");
+			transaction.onerror = err;
+			var request = transaction.objectStore("playListsCacheTracks").get(id);
+			request.onsuccess = function (event) {
+				resolve(request.result);
+			};
+			request.onerror = err;
+		});
+		var v = await p;
+		return v;
+	}
+
+
+	 async function setPlaylistCurrSnapshot(data) {
+		await dbReady;
+		if (!data)
+			return null;
+
+		var p = new Promise(function(resolve, reject) {
+			function err(event) {
+				gestioneErrori(event);
+				reject(event);
+			}
+			var transaction = db2.transaction(["playListsCacheSnapshot"], "readwrite");
+			var objectStore = transaction.objectStore("playListsCacheSnapshot");
+			transaction.oncomplete = function (event) {
+				console.log('db2 set ok');
+				resolve();
+			};
+			transaction.onerror = err;
+			var request = objectStore.put(data);
+			request.onerror = err;
+		});
+		await p;
+	}
+
+
+	async function setPlaylistTracks(data) {
+		await dbReady;
+		if (!data)
+			return null;
+
+		var p = new Promise(function(resolve, reject) {
+			function err(event) {
+				gestioneErrori(event);
+				reject(event);
+			}
+			var transaction = db2.transaction(["playListsCacheTracks"], "readwrite");
+			var objectStore = transaction.objectStore("playListsCacheTracks");
+			transaction.oncomplete = function (event) {
+				console.log('db2 set ok');
+				resolve();
+			};
+			transaction.onerror = err;
+			var request = objectStore.put(data);
+			request.onerror = err;
+
+		});
+		await p;
+	} 
+
+
+		
 	async function set(data) {
 		if (!data)
 			return null;
@@ -101,6 +199,11 @@ var db2 = (function () {
 	return {
 		set,
 		get,
+		getPlaylistCurrSnapshot,
+		getPlaylistTracks,
+		setPlaylistCurrSnapshot,
+		setPlaylistTracks,
+	
 		isReady: dbReady
 	};
 })();

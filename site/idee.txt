@@ -19,4 +19,14 @@ all'avvio
 	se cur device è attivo avvio immediato else scelta device (se ce n'è + di 1) e avvio immediato
 	funzione scelta playlist da button
 	invia 100
-	
+---
+nuova distribuzione dati
+- dbstorage: cache contenuto playlist
+- cloud: playlist con parametri custom senza content, blacklist, playlists, scaletta
+
+
+avvio:
+- leggo le playlist correnti da spotify
+- integro con dati da cloud
+- salvo i dati merged su cloud
+- NON aggiorno i contenuti playlist fino a quando non serve

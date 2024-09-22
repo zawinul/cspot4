@@ -51,12 +51,6 @@ function singleton(factory) {
 	}
 }
 
-
-
-// var getSilenceTracks = singleton(function () {
-// 	return Promise.all([silence1Id, silence2Id].map(asset.getTrack))
-// });
-
 function semplifica(obj, fields) {
 	if (!fields)
 		fields=[];

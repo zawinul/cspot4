@@ -10,38 +10,23 @@ var asset = (function(){
 		updatedFromSpotify: false,
 		status: {},
 		curTrack: null,
-		profile: {},
 		scaletta:null,
-
 	}
-	var cache = {
-		playlists: null,
-		playlistsTracks:null,
-		localDbImage: null,
-		tracks:{}	
+
+	var readOnlyCache = {
 	};
 
+	function readOnlyCopy(key) {
+		if (!readOnlyCache[key])
+			readOnlyCache[key] = clone(data[key]);
+		return readOnlyCache[key];
+	}
+
+	window.assetData = data;
+	window.assetRep = readOnlyCache;
 
 	var eventListener = {};
-	var transactionLevel = 0;
 	
-	function transaction(fun) {
-		transactionLevel++;
-		try {
-			fun();
-		} catch(e) {
-			console.log(e);
-		}
-		transactionLevel--;
-		if (transactionLevel==0) {
-			transactionEnd();
-		}
-	}
-
-	function transactionEnd() {
-
-	}
-
 	function trigger(event , ...args) {
 		// console.log({trigger: {event, args}});
 		if (eventListener[event]) {
@@ -52,74 +37,53 @@ var asset = (function(){
 	}
 
 	var spotStatus = spotStatusRefresher(function(data) {
-		asset.status = data;
+		asset.setStatus(data);
 	});
 
 	spotStatus.refresh();
 
 	return {
-		get playlists() {
-			return cache.playlists;
+		getPlaylists: function() {
+			return readOnlyCopy('playlists');
 		},
-		set playlists(p) {
-			data.playlists = clone(p);
-			cache.playlists = clone(p);
-			cache.localDbImage = null;
+		setPlaylists(p) {
+			let j = JSON.stringify(p);
+			data.playlists = JSON.parse(j);
+			delete readOnlyCache.playlists;
 			trigger('db-data-changed');
 		},
-		get playlistsTracks() {
-			return cache.playlistsTracks;
+		getPlaylistsTracks: function() {
+			return readOnlyCopy('playlistsTracks');
 		},
-		set playlistsTracks(p) {
+		setPlaylistsTracks: function(p) {
 			data.playlistsTracks = clone(p);
-			cache.playlistsTracks = clone(p);
-			cache.localDbImage = null;
+			delete readOnlyCache.playlistsTracks;
 			trigger('db-data-changed');
 		},
 		setPlaylistsTrack: function(plId, p) {
 			data.playlistsTracks[plId] = clone(p);
-			cache.playlistsTracks[plId] = clone(p);
-			cache.localDbImage = null;
+			delete readOnlyCache.playlistsTracks;
 			trigger('db-data-changed');
 		},
-		set blacklist(v) {
+		setBlacklist: function(v) {
 			data.blacklist = clone(v);
-			cache.localDbImage = null;
+			delete readOnlyCache.blacklist;
 			trigger('db-data-changed');
 		},
-		get blacklist() {
-			return clone(data.blacklist);
+		getBlacklist: function() {
+			return readOnlyCopy('blacklist');
 		},
-		set profile(p) {
-			data.profile=clone(p);
+		getSelectedPlayLists: function() {
+			return readOnlyCopy('selectedPlayLists');
 		},
-		get profile() {
-			return clone(data.profile);
-		},
-		get localDbImage() {
-			if (!cache.localDbImage) {
-				console.log(`compute localDbImage`);
-				cache.localDbImage =  {
-					playlists: clone(data.playlists),
-					playlistsTracks: clone(data.playlistsTracks),
-					selectedPlayLists: clone(data.selectedPlayLists),
-					blacklist: clone(data.blacklist),
-					scaletta: clone(data.scaletta) 
-				};
-			}
-			return cache.localDbImage;
-		},
-		get selectedPlayLists() {
-			return clone(data.selectedPlayLists);
-		},
-		set selectedPlayLists(v) {
+		setSelectedPlayLists: function(v) {
 			data.selectedPlayLists = clone(v);
-			cache.localDbImage = null;
+			delete readOnlyCache.selectedPlayLists;
 		},
-		get status()  {
-			return data.status;
+		getStatus: function()  {
+			return readOnlyCopy('status');
 		},
-		set status(s) {
+		setStatus: function(s) {
 			if (!s)
 				return;
 
@@ -127,14 +91,16 @@ var asset = (function(){
 			var oldItemId = (data.status && data.status.item) ? data.status.item.id : null;
 			data.status = s;
 			data.curItem = s.item;
+			delete readOnlyCache.status;
+			delete readOnlyCache.curItem;
+
 			trigger('play-status', s);
 			if (s.item && s.item.id &&  (oldItemId!=s.item.id))
 				trigger('track-changed');			
 			
-
 		},
 		get curItem() {
-			return data.curItem;
+			return readOnlyCopy('curItem');
 		},
 		get _debug_data() {
 			return data;
@@ -147,27 +113,62 @@ var asset = (function(){
 		refreshStatus: function(delay) {
 			return spotStatus.refresh(delay);
 		},
-		getTrack:async function(id) {
-			if (!cache.tracks[id])
-				cache.tracks[id] = await spotlib.getTrackById(id);
-			return cache.tracks[id];
-			
-		},
-		set scaletta(v) {
+		// getTrack:async function(id) {
+		// 	if (!representation.tracks[id])
+		// 		representation.tracks[id] = await spotlib.getTrackById(id);
+		// 	return representation.tracks[id];
+		// },
+		setScaletta: function(v) {
 			data.scaletta = clone(v);
-			cache.localDbImage = null;
+			delete readOnlyCache.scaletta;
 			trigger('db-data-changed');
 		},
-		get scaletta() {
-			return data.scaletta;
+		getScaletta: function() {
+			return readOnlyCopy('scaletta');
 		},
 
 	}
 })();
 
+let clouddata = {};
+function cloudsend() {
+	cloud.write(spotlib.profile.id, clouddata);
+}
+debouncedCloudSend = _.debounce(cloudsend, 3000);
+
+var lastdbdata = {}, lastclouddata = {};
 asset.on('db-data-changed', function(value) {
-	db2.set(asset.localDbImage);
-	console.log('db-data-changed, db2 written');
+	//debugger;
+	let pl = clone(asset.getPlaylists());
+	let pt = asset.getPlaylistsTracks();
+	let spl =  clone(asset.selectedPlayLists);
+	let blacklist = asset.getBlacklist();
+	let scaletta = clone(asset.scaletta); 
+
+	let dbdata = {
+		playlists: pl,
+		playlistsTracks: pt,
+		selectedPlayLists: spl,
+		blacklist,
+		scaletta 
+	};
+	if (!_.isEqual(dbdata, lastdbdata)) {
+		lastdbdata = dbdata;
+		db2.set(dbdata);
+		console.log('db-data-changed, db2 written');
+	}
+
+	clouddata = {
+		playlists: pl,
+		selectedPlayLists: spl,
+		blacklist,
+		scaletta
+	};
+	if (!_.isEqual(clouddata, lastclouddata)) {
+		lastclouddata = clouddata;
+		debouncedCloudSend();
+		console.log('db-data-changed, cloud written');
+	}
 });
 
 
@@ -203,13 +204,37 @@ async function updatePlaylistFromSpotify(pl, shadow) {
 	}
 }
 
+async function updatePlaylistCache(playlists) {
+
+	for (var sList of playlists) {
+		oldsnap = await db2.getPlaylistCurrSnapshot(sList.id);
+		if (oldsnap && oldsnap.snapshot_id==sList.snapshot_id) {
+			console.log('playlist '+sList.name+' is up to date');
+			continue;
+		}
+		var arr = await spotlib.getPlaylistTracks(sList);
+		arr = arr.filter(x=> x && x.track);
+		arr = arr.map(x=>x.track).map(x=>({
+			id: x.id,
+			name:x.name,
+			uri:x.uri,
+			artist:x.artists.map(a=>a.name).join(','),
+			album:x.album.name
+		}));
+		db2.setPlaylistCurrSnapshot({	id:sList.id, snapshot_id:sList.snapshot_id });
+		db2.setPlaylistTracks({ id:sList.id, tracks:arr });
+	}
+
+
+}
 async function updateAssetFromSpotify() {
-	var tmp = await spotlib.getPlaylists(); 
-	var spotifyPlaylists = tmp.items; 
+	var tmp = await spotlib.getPlaylists();
+	updatePlaylistCache(tmp); 
+	var spotifyPlaylists = tmp; 
 	var promises = [];
 	var shadow = {
-		playlists: clone(asset.playlists) || {},
-		playlistsTracks: clone(asset.playlistsTracks) || {}
+		playlists: clone(asset.getPlaylists()) || {},
+		playlistsTracks: asset.getPlaylistsTracks() || {}
 	}
 
 	var changed = false;
@@ -242,31 +267,32 @@ async function updateAssetFromSpotify() {
 	}	
 
 	if (changed || deleted) {
-		console.log('aggiorno asset.playlists');
-		asset.playlists = shadow.playlists;
-		asset.playlistsTracks = shadow.playlistsTracks;
+		console.log('aggiorno asset playlists');
+		asset.setPlaylists(shadow.playlists);
+		asset.setPlaylistsTracks(shadow.playlistsTracks);
 	}
 	console.log('updateAssetFromSpotify DONE');
 	msg("spotify sync'ed");
 }
 
 
-async function updateAssetFromDB() {
+async function updateAssetFromDB(profile) {
+	debugger;
 	var d = await db2.get();
 	if (d && d.playlists) 
-		asset.playlists = clone(d.playlists);
+		asset.setPlaylists(d.playlists);
 	if (d && d.playlistsTracks) 
-		asset.playlistsTracks = clone(d.playlistsTracks);
+		asset.setPlaylistsTracks(d.playlistsTracks);
 	if (d && d.selectedPlayLists) 
-		asset.selectedPlayLists = clone(d.selectedPlayLists);
+		asset.selectedPlayLists = d.selectedPlayLists;
 	if (d && d.blacklist) 
-		asset.blacklist = clone(d.blacklist);
+		asset.setBlacklist(d.blacklist);
 	if (d && d.scaletta) 
 		asset.scaletta = clone(d.scaletta);
 }
 
 function resetSpotifyData() {
-	asset.playlists = {};
-	asset.playlistsTracks = {};
+	asset.setPlaylists({});
+	asset.setPlaylistsTracks({});
 	updateAssetFromSpotify();
 }

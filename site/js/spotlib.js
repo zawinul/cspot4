@@ -143,13 +143,12 @@ var spotlib = {
 		});
 	}
 
-	function getPlaylists() {
+	async function getPlaylists() {
 		console.log('getPlaylists');
-		let p = callSpotify("https://api.spotify.com/v1/me/playlists", { limit: 50 });
-		p.then(function (x) {
-			spotlib.playlists = x.items;
-		});
-		return p;
+		let pl = await callSpotify("https://api.spotify.com/v1/me/playlists", { limit: 50 });
+		spotlib.playlists = pl.items;
+
+		return spotlib.playlists;
 	}
 
 	function getPlaylistIds() {
@@ -285,8 +284,8 @@ var spotlib = {
 			} catch(e) { 
 				console.log(e);
 			}
-			console.log('get status failed, retry in 1 second');
-			await sleep(1000);
+			console.log('get status failed, retry in 3 second');
+			await sleep(3000);
 		}
 	}
 
@@ -375,13 +374,15 @@ var spotlib = {
 		var offset = offsetbase;
 		var ret = [];
 		var total = '?';
+
 		return new Promise(function (resolve, reject) {
 			function f() {
-				console.log('get offset=' + offset + ' (total=' + total + ')');
+				console.log('get ' + plist.name+' offset=' + offset + ' (total=' + total + ')');
 				var u = plist.href;
 				u += "/tracks?offset=" + offset + "&limit=" + limit;
 				callSpotify(u).then(onData);
 			}
+
 			function onData(x) {
 				total = x.total;
 				for (var tr of x.items)
@@ -397,37 +398,7 @@ var spotlib = {
 	}
 
 
-	// function OLD_getPlaylistTracks(plist) {
-	// 	console.log('getPlaylistTracks ' + plist.name);
-	// 	var limit = 100;
-	// 	var offsetbase = 0;
-	// 	var offset = offsetbase;
-	// 	var ret = $.Deferred();
-
-	// 	function f() {
-	// 		console.log('get offset=' + offset);
-	// 		var u = plist.href;
-	// 		u += "/tracks?offset=" + offset + "&limit=" + limit;
-	// 		callSpotify(u).then(onData);
-	// 	}
-
-	// 	function onData(x) {
-	// 		if (offset === 0)
-	// 			plist.tracks = x;
-	// 		else
-	// 			for (var i = 0; i < x.items.length; i++)
-	// 				plist.tracks.items.push(x.items[i]);
-	// 		//console.log("act="+plist.tracks.items.length+" of "+x.total);
-	// 		offset = plist.tracks.items.length;
-	// 		if (offset < x.total)
-	// 			f();
-	// 		else
-	// 			ret.resolve(plist);
-	// 	}
-	// 	f();
-	// 	return ret;
-	// }
-
+	
 	function getAlbum(id) {
 		var req = {
 			method: 'GET',
@@ -530,31 +501,13 @@ var spotlib = {
 	}
 
 
-	function sequence(funarray) {
-		var ret = $.Deferred();
-		console.log('sequence ' + funarray.length);
-		var i = 0;
-		function f(x) {
-			if (i >= funarray.length) {
-				console.log('end of sequence');
-				ret.resolve();
-				return;
-			}
-			$.when(funarray[i++]()).then(f);
-		}
-		f();
-		return ret;
-	}
-
-	function init() {
-		var d = $.Deferred();
-
-		sequence([getProfile /*, getPlaylists, getCategories, getFeaturedPlaylists*/]).then(function () {
-			msg('spotlib initialized');
+	async function init() {
+		let p = new Promise(async function(resolve, reject){
+			await getProfile();
 			spotlib.initialized.resolve();
-			d.resolve();
+			resolve();
 		});
-		return d;
+		return p;
 	}
 
 	function sample() {
